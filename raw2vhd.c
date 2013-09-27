@@ -11,7 +11,7 @@ int main()
     FILE *myfile;
     struct rec my_record;
 
-    myfile=fopen("./test.bin","rb");
+    myfile=fopen("./test.bin","wb");
     if(!myfile)
     {
         printf("Unable to open file");
