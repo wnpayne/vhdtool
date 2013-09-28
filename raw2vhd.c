@@ -1,6 +1,5 @@
 #include<stdio.h>
 #include<string.h>
-
 typedef struct vhdfooter
 {
     unsigned char cookie[8];
@@ -9,8 +8,8 @@ typedef struct vhdfooter
     unsigned long int dataoffset;
     unsigned int timestamp;
     unsigned char cApp[4];
-    unsigned int cVer[4];
-    unsigned int cOS[4];
+    unsigned int cVer;
+    unsigned int cOS;
     unsigned long int originalsize;
     unsigned long int currentsize;
     unsigned int diskgeo;
@@ -18,7 +17,7 @@ typedef struct vhdfooter
     unsigned int checksum;
     unsigned char uuid[16];
     unsigned char savedstate;
-    unsigned char reserved[427];
+    unsigned char reserved[427]; 
 
 }VHDFOOTER;
 
@@ -31,7 +30,7 @@ int main()
     	
     fread(&footer,sizeof (VHDFOOTER),1,myfile);
     fclose(myfile);
-    printf("%lu\n",sizeof(footer.dataoffset));
+    printf("%lu\n",sizeof(VHDFOOTER));
 
     return 0;
 }
