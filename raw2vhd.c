@@ -1,25 +1,37 @@
 #include<stdio.h>
+#include<string.h>
 
-struct rec
+typedef struct vhdfooter
 {
-    int x,y;
-};
+    unsigned char cookie[8];
+    unsigned int features;
+    unsigned int fileformat;
+    unsigned long int dataoffset;
+    unsigned int timestamp;
+    unsigned char cApp[4];
+    unsigned int cVer[4];
+    unsigned int cOS[4];
+    unsigned long int originalsize;
+    unsigned long int currentsize;
+    unsigned int diskgeo;
+    unsigned int disktype;
+    unsigned int checksum;
+    unsigned char uuid[16];
+    unsigned char savedstate;
+    unsigned char reserved[427];
+
+}VHDFOOTER;
 
 int main()
 {
-    int counter;
     FILE *myfile;
-    struct rec my_record;
+    VHDFOOTER footer;
 
-    myfile=fopen("./test.bin","wb");
-    if(!myfile)
-    {
-        printf("Unable to open file");
-        return 1;
-    }
-    my_record.x = 1;
-    my_record.y = 7;
-    fwrite(&my_record,sizeof(struct rec), 1, myfile);
+    myfile=fopen("/mnt/test1foot","rb");
+    	
+    fread(&footer,sizeof (VHDFOOTER),1,myfile);
     fclose(myfile);
+    printf("%lu\n",sizeof(footer.dataoffset));
+
     return 0;
 }
