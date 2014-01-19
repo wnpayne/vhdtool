@@ -1,0 +1,8 @@
+next up:
+
+checksumming (computation and validation)
+
+
+transfer test VHD file to work with
+fix UUID number (eg do microsoft way with endianness)
+
