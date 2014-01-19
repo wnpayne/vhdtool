@@ -1,4 +1,7 @@
 #include<stdio.h>
+
+//Microsoft VHD file footer. 512 bytes, spec: http://download.microsoft.com/download/f/f/e/ffef50a5-07dd-4cf8-aaa3-442c0673a029/Virtual%20Hard%20Disk%20Format%20Spec_10_18_06.doc
+
 typedef struct vhdfooter
 {
     unsigned char cookie[8];
@@ -34,8 +37,8 @@ void fixString(int originalLen, char *originalString, char *fixedString) {
 
 }
 
-void printbits(char *toprint,int len)
-{
+void printbits(char *toprint,int len) {
+
     int i=0;
     for (i=0;i<len;i++) {
         printf("%02X ",(unsigned char) toprint[i]);
