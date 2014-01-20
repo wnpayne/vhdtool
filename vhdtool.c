@@ -4,22 +4,22 @@
 
 typedef struct vhdfooter
 {
-    unsigned char cookie[8];
-    unsigned int features;
-    unsigned int fileformat;
-    unsigned long int dataoffset;
-    unsigned int timestamp;
-    unsigned char cApp[4];
-    unsigned int cVer;
-    unsigned int cOS;
-    unsigned long int originalsize;
-    unsigned long int currentsize;
-    unsigned int diskgeo;
-    unsigned int disktype;
-    unsigned int checksum;
-    unsigned char uuid[16];
-    unsigned char savedstate;
-    unsigned char reserved[427]; 
+	unsigned char cookie[8];
+	unsigned int features;
+	unsigned int fileformat;
+	unsigned long int dataoffset;
+	unsigned int timestamp;
+	unsigned char cApp[4];
+	unsigned int cVer;
+	unsigned int cOS;
+	unsigned long int originalsize;
+	unsigned long int currentsize;
+	unsigned int diskgeo;
+	unsigned int disktype;
+	unsigned int checksum;
+	unsigned char uuid[16];
+	unsigned char savedstate;
+	unsigned char reserved[427]; 
 
 }VHDFOOTER;
 
@@ -28,22 +28,22 @@ typedef struct vhdfooter
 //provide (1) empty string WITH a null terminator.
 //its length should be originalLen+1
 void fixString(int originalLen, char *originalString, char *fixedString) {
-    int i;
+	int i;
 
-    for(i=0;i<originalLen;i++)
-    {
-       fixedString[i]=originalString[i];
-    }
+	for(i=0;i<originalLen;i++)
+	{
+		fixedString[i]=originalString[i];
+	}
 
 }
 
 // provide a pointer to a "string" (actually just a memory address), and the number of bytes to print.
 void printbytes(char *toprint,int len) {
 
-    int i=0;
-    for (i=0;i<len;i++) {
-        printf("%02X ",(unsigned char) toprint[i]);
-    }
+	int i=0;
+	for (i=0;i<len;i++) {
+		printf("%02X ",(unsigned char) toprint[i]);
+	}
 
 }
 
@@ -85,26 +85,29 @@ void footer_print(VHDFOOTER in_footer) {
 	printf("structSize:\t%lu\n",sizeof(VHDFOOTER));
 }
 
-unsigned int footer_checksum(VHDFOOTER in_footer) {
+unsigned int footer_checksum(VHDFOOTER* in_footer) {
 	unsigned int checksum = 0;
 
 	return checksum;	
 }
 
 int main(int argc, char *argv[]) {
-    FILE *myfile;
-    int i=0;
-    VHDFOOTER footer;
+	FILE *myfile;
+	int i=0;
+	unsigned int checksum = 0;
+	VHDFOOTER footer;
 
-    myfile=fopen(argv[1],"rb");
-    	
-    fread(&footer,sizeof (VHDFOOTER),1,myfile);
-    fclose(myfile);
+	myfile=fopen(argv[1],"rb");
 
-    footer_print(footer);
+	fread(&footer,sizeof (VHDFOOTER),1,myfile);
+	fclose(myfile);
 
-    printf("checking checksum...:\n");
-    printf("%d\n",footer.checksum);
+	footer_print(footer);
+
+	printf("checking checksum...:\n");
+	printf("%d\n",footer.checksum);
+
+	footer_checksum(&footer);
 
 
     return 0;
