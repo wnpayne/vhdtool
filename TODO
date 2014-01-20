@@ -1,3 +1,11 @@
+currently working on:
+
+understand the checksum: can I sum the bytes and then use bitwise negation (by hand?)
+and then achieve the correct checksum? also what is the checksum byte order?
+
+how do I sum all the bytes, do a negation, and then print the same result as simply printing the checksum using printbytes() straight from the footer?
+
+
 next up:
 
 checksumming (computation and validation)
