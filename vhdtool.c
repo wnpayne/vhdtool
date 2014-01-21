@@ -86,22 +86,22 @@ void footer_print(VHDFOOTER in_footer) {
 }
 
 unsigned int footer_checksum(VHDFOOTER in_footer) {
-	unsigned int checksum,checksum_comp = 0;
-	int i,j,k = 0;
+	unsigned int checksum = 0, checksum_comp = 0;
+	int i = 0, j = 0, k = 0;
 	unsigned char* char_ptr = 0;
 
 	in_footer.checksum = 0;
 	char_ptr = (unsigned char *) &in_footer;
 
 	for(i=0;i<sizeof(VHDFOOTER);i++) {
-		//printf("%u %u\n",i,*char_ptr);
-		checksum += (unsigned int)*char_ptr;
-		char_ptr++;
+		checksum += (*char_ptr);
+		char_ptr = char_ptr + 1;
+//		printf("%u %u %u\n",i,*char_ptr,checksum);
 	}
-	checksum_comp = checksum;
+	checksum_comp = ~checksum;
 
-//	return *(unsigned int *) &checksum_comp;	
-	return checksum;
+	return *(unsigned int *) &checksum_comp;	
+//	return checksum;
 }
 
 int main(int argc, char *argv[]) {
@@ -117,11 +117,10 @@ int main(int argc, char *argv[]) {
 
 	footer_print(footer);
 
-	printf("given checksum...: %u\n",footer.checksum);
+	printf("given checksum: %u\n",htonl(footer.checksum));
 
 	checksum = footer_checksum(footer);
 	printf("computed checksum: %u\n",checksum);
-	printbytes((char *) &checksum,4);
 	printf("\n");
 
 
