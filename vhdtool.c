@@ -1,7 +1,15 @@
+//NOTE: for the moment this will only work correctly on little-endian architectures. 
+//A little more work and it should be architecture neutral.
+
+
 #include<stdio.h>
 #include<time.h>
 
 //Microsoft VHD file footer. 512 bytes, spec: http://download.microsoft.com/download/f/f/e/ffef50a5-07dd-4cf8-aaa3-442c0673a029/Virtual%20Hard%20Disk%20Format%20Spec_10_18_06.doc
+
+//Unix time for January 1st 2000 UTC. The timestamp format is a big-endian 
+//integer containing the number of seconds since January 1st 2000 UTC.
+const int WIN_REF_TIME = (time_t) 946713600;
 
 typedef struct vhdfooter
 {
@@ -26,15 +34,23 @@ typedef struct vhdfooter
 
 void read_timestamp(VHDFOOTER* in_footer) {
 
-	//Unix time for January 1st 2000 UTC. The timestamp format is a big-endian 
-	//integer containing the number of seconds since January 1st 2000 UTC.
-	//We get the VHD time by adding the unix time for January 1st 2000 to the seconds indicated by the footer.
-	//The result is then converted to a human readable string.
-	const int WIN_REF_TIME = (time_t) 946713600;
+	//We get the VHD time by adding the unix time for January 1st 2000 to the seconds in
+	//dicated by the footer. The result is then converted to a human readable string.
 	time_t sec;
 
 	sec = (time_t) (WIN_REF_TIME + htonl(in_footer->timestamp));
 	printf(ctime(&sec));
+
+}
+
+unsigned int current_timestamp() {
+	time_t sec;
+	unsigned int timestamp = 0;
+	
+	sec = time(NULL);
+	timestamp = (unsigned int) (sec) - WIN_REF_TIME;
+
+	return timestamp;
 
 }
 
@@ -139,6 +155,18 @@ int main(int argc, char *argv[]) {
 	printf("computed checksum: %u\n",checksum);
 	printf("\n");
 	read_timestamp(&footer);
+	
+	//stop using checksum here, just a placeholder!
+	checksum = current_timestamp();
+	printf("%u\t%u\n", checksum,htonl(checksum));
+
+	//the timestamp needs to be stored as big-endian, so switch before writing.
+	//again stop using checksum variable
+
+	footer.timestamp = htonl(checksum);
+
+	myfile = fopen("./output-test","wb");
+	fwrite(&footer,sizeof(VHDFOOTER),1,myfile);
 
     return 0;
 }

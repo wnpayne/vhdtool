@@ -1,3 +1,4 @@
 vhdtool
 !vhdtool.c
 *.swp
+output-test
