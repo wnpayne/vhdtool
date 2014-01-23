@@ -25,6 +25,11 @@ typedef struct vhdfooter
 }VHDFOOTER;
 
 void read_timestamp(VHDFOOTER* in_footer) {
+
+	//Unix time for January 1st 2000 UTC. The timestamp format is a big-endian 
+	//integer containing the number of seconds since January 1st 2000 UTC.
+	//We get the VHD time by adding the unix time for January 1st 2000 to the seconds indicated by the footer.
+	//The result is then converted to a human readable string.
 	const int WIN_REF_TIME = (time_t) 946713600;
 	time_t sec;
 
@@ -57,6 +62,7 @@ void printbytes(char *toprint,int len) {
 
 }
 
+//Pretty print the (mostly) raw bytes of the footer
 void footer_print(VHDFOOTER in_footer) {
 	char fixed_cookie[9]="";
 	char fixed_cApp[5]="";
