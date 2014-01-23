@@ -1,4 +1,5 @@
 #include<stdio.h>
+#include<time.h>
 
 //Microsoft VHD file footer. 512 bytes, spec: http://download.microsoft.com/download/f/f/e/ffef50a5-07dd-4cf8-aaa3-442c0673a029/Virtual%20Hard%20Disk%20Format%20Spec_10_18_06.doc
 
@@ -22,6 +23,15 @@ typedef struct vhdfooter
 	unsigned char reserved[427]; 
 
 }VHDFOOTER;
+
+void read_timestamp(VHDFOOTER* in_footer) {
+	const int WIN_REF_TIME = (time_t) 946713600;
+	time_t sec;
+
+	sec = (time_t) (WIN_REF_TIME + htonl(in_footer->timestamp));
+	printf(ctime(&sec));
+
+}
 
 //provide (1) original string without a null terminator.
 //provide its length in originalLen;
@@ -54,9 +64,9 @@ void footer_print(VHDFOOTER in_footer) {
     	fixString(8,in_footer.cookie,fixed_cookie);
 	fixString(4,in_footer.cApp,fixed_cApp);
 	printf("cookie:\t\"%s\"\ncapp:\t\"%s\"",fixed_cookie,fixed_cApp);
-	printf("\nFeatures\t");
+	printf("\nFeatures:\t");
 	printbytes((char *) &in_footer.features,4);
-	printf("\nFile Format\t");
+	printf("\nFile Format:\t");
 	printbytes((char *) &in_footer.fileformat,4);
 	printf("\nCreatorr Ver:\t");
 	printbytes((char *) &in_footer.cVer,4);
@@ -64,21 +74,21 @@ void footer_print(VHDFOOTER in_footer) {
 	printbytes((char *) &in_footer.cOS,4);
 	printf("\nData Offset:\t");
 	printbytes((char *) &in_footer.dataoffset,8);
-	printf("\nTime Stamp\t");
+	printf("\nTime Stamp:\t");
 	printbytes((char *) &in_footer.timestamp,4);
-	printf("\nOriginal Size\t");
+	printf("\nOriginal Size:\t");
 	printbytes((char *) &in_footer.originalsize,8);
-	printf("\nCurrent Size\t");
+	printf("\nCurrent Size:\t");
 	printbytes((char *) &in_footer.currentsize,8);
 	printf("\nDisk Geo:\t");
 	printbytes((char *) &in_footer.diskgeo,4);
-	printf("\nDisk Type\t");
+	printf("\nDisk Type:\t");
 	printbytes((char *) &in_footer.disktype,4);
-	printf("\nChecksum\t");
+	printf("\nChecksum:\t");
 	printbytes((char *) &in_footer.checksum,4);
 	printf("\nSaved State:\t");
 	printbytes((char *) &in_footer.savedstate,1);
-	printf("\nuuid:\t");
+	printf("\nuuid:\t\t");
 	printbytes((char *) &in_footer.uuid,16);
 	printf("\n\n");
     
@@ -122,7 +132,7 @@ int main(int argc, char *argv[]) {
 	checksum = footer_checksum(footer);
 	printf("computed checksum: %u\n",checksum);
 	printf("\n");
-
+	read_timestamp(&footer);
 
     return 0;
 }
