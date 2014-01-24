@@ -1,3 +1,17 @@
+fields to implement/understand/verify:
+1. creator version
+2. hostOS
+3. time stamp
+4. original/current size
+5. disk geo
+6. uuid pretty print
+
+
+
+learn about bitfields!
+
+separate code into .h and .c files
+
 currently working on:
 
 understand the checksum: can I sum the bytes and then use bitwise negation (by hand?)

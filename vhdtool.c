@@ -9,7 +9,7 @@
 
 //Unix time for January 1st 2000 UTC. The timestamp format is a big-endian 
 //integer containing the number of seconds since January 1st 2000 UTC.
-const int WIN_REF_TIME = (time_t) 946713600;
+#define WIN_REF_TIME 946713600
 
 typedef struct vhdfooter
 {
@@ -43,7 +43,7 @@ void read_timestamp(VHDFOOTER* in_footer) {
 
 }
 
-unsigned int current_timestamp() {
+unsigned int current_timestamp(void) {
 	time_t sec;
 	unsigned int timestamp = 0;
 	
@@ -130,9 +130,9 @@ unsigned int footer_checksum(VHDFOOTER in_footer) {
 		char_ptr = char_ptr + 1;
 //		printf("%u %u %u\n",i,*char_ptr,checksum);
 	}
-	checksum_comp = ~checksum;
-
-	return *(unsigned int *) &checksum_comp;	
+	
+	//return *(unsigned int *) &checksum_comp;	
+	return ~checksum;	
 //	return checksum;
 }
 
