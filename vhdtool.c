@@ -168,5 +168,9 @@ int main(int argc, char *argv[]) {
 	myfile = fopen("./output-test","wb");
 	fwrite(&footer,sizeof(VHDFOOTER),1,myfile);
 
+	//better check endianness here first (only works on intel arch for now...)
+	//
+	printf("size in bytes: %llu\n", __builtin_bswap64(footer.originalsize));
+
     return 0;
 }
