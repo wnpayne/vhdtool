@@ -1,4 +1,13 @@
+
+Currently working on:
+figure out C/H/S algorithm? Implement it, so that I can add a VHD header to an already exisiting image file. Or create an image file and define the CHS in the header.
+read those articles about sector alignment and figure out if that can work here. 
+this should be fun!
+
+
+
 fields to implement/understand/verify:
+
 1. creator version
 2. hostOS
 3. time stamp
@@ -11,19 +20,6 @@ fields to implement/understand/verify:
 learn about bitfields!
 
 separate code into .h and .c files
-
-currently working on:
-
-understand the checksum: can I sum the bytes and then use bitwise negation (by hand?)
-and then achieve the correct checksum? also what is the checksum byte order?
-
-how do I sum all the bytes, do a negation, and then print the same result as simply printing the checksum using printbytes() straight from the footer?
-
-
-next up:
-
-checksumming (computation and validation)
-
 
 transfer test VHD file to work with
 fix UUID number (eg do microsoft way with endianness)
