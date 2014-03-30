@@ -1,18 +1,17 @@
-//NOTE: for the moment this will only work correctly on little-endian architectures. 
-//A little more work and it should be architecture neutral.
+/* NOTE: for the moment this will only work correctly on little-endian architectures. 
+   A little more work and it should be architecture neutral. */
 
 
 #include<stdio.h>
 #include<time.h>
 
-//Microsoft VHD file footer. 512 bytes, spec: http://download.microsoft.com/download/f/f/e/ffef50a5-07dd-4cf8-aaa3-442c0673a029/Virtual%20Hard%20Disk%20Format%20Spec_10_18_06.doc
+/* Microsoft VHD file footer. 512 bytes, spec: http://download.microsoft.com/download/f/f/e/ffef50a5-07dd-4cf8-aaa3-442c0673a029/Virtual%20Hard%20Disk%20Format%20Spec_10_18_06.doc */
 
-//Unix time for January 1st 2000 UTC. The timestamp format is a big-endian 
-//integer containing the number of seconds since January 1st 2000 UTC.
+/* Unix time for January 1st 2000 UTC. The timestamp format is a big-endian 
+   integer containing the number of seconds since January 1st 2000 UTC. */
 #define WIN_REF_TIME 946713600
 
-typedef struct vhdfooter
-{
+typedef struct vhdfooter {
 	unsigned char cookie[8];
 	unsigned int features;
 	unsigned int fileformat;
@@ -32,10 +31,11 @@ typedef struct vhdfooter
 
 }VHDFOOTER;
 
-void read_timestamp(VHDFOOTER* in_footer) {
+void read_timestamp(VHDFOOTER* in_footer)
+{
 
-	//We get the VHD time by adding the unix time for January 1st 2000 to the seconds in
-	//dicated by the footer. The result is then converted to a human readable string.
+	/* We get the VHD time by adding the unix time for January 1st 2000 to the seconds in
+	   dicated by the footer. The result is then converted to a human readable string. */
 	time_t sec;
 
 	sec = (time_t) (WIN_REF_TIME + htonl(in_footer->timestamp));
@@ -43,7 +43,8 @@ void read_timestamp(VHDFOOTER* in_footer) {
 
 }
 
-unsigned int current_timestamp(void) {
+unsigned int current_timestamp(void)
+{
 	time_t sec;
 	unsigned int timestamp = 0;
 	
@@ -54,11 +55,12 @@ unsigned int current_timestamp(void) {
 
 }
 
-//provide (1) original string without a null terminator.
-//provide its length in originalLen;
-//provide (1) empty string WITH a null terminator.
-//its length should be originalLen+1
-void fixString(int originalLen, char *originalString, char *fixedString) {
+/* provide (1) original string without a null terminator.
+   provide its length in originalLen;
+   provide (1) empty string WITH a null terminator.
+   its length should be originalLen+1 */
+void fixString(int originalLen, char *originalString, char *fixedString)
+{
 	int i;
 
 	for(i=0;i<originalLen;i++)
@@ -68,8 +70,9 @@ void fixString(int originalLen, char *originalString, char *fixedString) {
 
 }
 
-// provide a pointer to a "string" (actually just a memory address), and the number of bytes to print.
-void printbytes(char *toprint,int len) {
+/* provide a pointer to a "string" (actually just a memory address), and the number of bytes to print. */
+void printbytes(char *toprint,int len)
+{
 
 	int i=0;
 	for (i=0;i<len;i++) {
@@ -78,8 +81,9 @@ void printbytes(char *toprint,int len) {
 
 }
 
-//Pretty print the (mostly) raw bytes of the footer
-void footer_print(VHDFOOTER in_footer) {
+/* Pretty print the (mostly) raw bytes of the footer. */
+void footer_print(VHDFOOTER in_footer)
+{
 	char fixed_cookie[9]="";
 	char fixed_cApp[5]="";
 	
@@ -117,7 +121,8 @@ void footer_print(VHDFOOTER in_footer) {
 	printf("structSize:\t%lu\n",sizeof(VHDFOOTER));
 }
 
-unsigned int footer_checksum(VHDFOOTER in_footer) {
+unsigned int footer_checksum(VHDFOOTER in_footer)
+{
 	unsigned int checksum = 0, checksum_comp = 0;
 	int i = 0, j = 0, k = 0;
 	unsigned char* char_ptr = 0;
@@ -136,7 +141,8 @@ unsigned int footer_checksum(VHDFOOTER in_footer) {
 //	return checksum;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	FILE *myfile;
 	int i=0;
 	unsigned int checksum = 0;
@@ -156,20 +162,19 @@ int main(int argc, char *argv[]) {
 	printf("\n");
 	read_timestamp(&footer);
 	
-	//stop using checksum here, just a placeholder!
+	/* stop using checksum here, just a placeholder! */
 	checksum = current_timestamp();
 	printf("%u\t%u\n", checksum,htonl(checksum));
 
-	//the timestamp needs to be stored as big-endian, so switch before writing.
-	//again stop using checksum variable
+	/* the timestamp needs to be stored as big-endian, so switch before writing.
+	   again stop using checksum variable */
 
 	footer.timestamp = htonl(checksum);
 
 	myfile = fopen("./output-test","wb");
 	fwrite(&footer,sizeof(VHDFOOTER),1,myfile);
 
-	//better check endianness here first (only works on intel arch for now...)
-	//
+	/* better check endianness here first (only works on intel arch for now...) */
 	printf("size in bytes: %llu\n", __builtin_bswap64(footer.originalsize));
 
     return 0;
