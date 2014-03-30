@@ -32,12 +32,12 @@ struct vhdfooter {
 // tested this recently and it was off by seemingly 1 hour from a windows box. Seems to work on my machine. maybe a daylight savings problem with UTC?
 /* We get the VHD time by adding the unix time for January 1st 2000 to the seconds in
    dicated by the footer. The result is then converted to a human readable string. */
-void read_timestamp(struct vhdfooter *in_footer)
+void read_timestamp(struct vhdfooter in_footer)
 {
 
 	time_t sec;
 
-	sec = (time_t) (WIN_REF_TIME + be32toh(in_footer->timestamp));
+	sec = (time_t) (WIN_REF_TIME + be32toh(in_footer.timestamp));
 	printf(ctime(&sec));
 
 }
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 	checksum = footer_checksum(footer);
 	printf("computed checksum: %u\n",checksum);
 	printf("\n");
-	read_timestamp(&footer);
+	read_timestamp(footer);
 	
 	ctimestamp = current_timestamp();
 	printf("%u\t%u\n", ctimestamp, be32toh(ctimestamp));
