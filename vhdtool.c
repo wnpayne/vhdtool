@@ -5,6 +5,7 @@
 #include<stdio.h>
 #include<time.h>
 #include<stdint.h>
+#include<endian.h>
 
 /* Microsoft VHD file footer. 512 bytes, spec: http://download.microsoft.com/download/f/f/e/ffef50a5-07dd-4cf8-aaa3-442c0673a029/Virtual%20Hard%20Disk%20Format%20Spec_10_18_06.doc */
 
@@ -32,11 +33,11 @@ struct vhdfooter {
 	unsigned char reserved[427]; 
 };
 
+/* We get the VHD time by adding the unix time for January 1st 2000 to the seconds in
+   dicated by the footer. The result is then converted to a human readable string. */
 void read_timestamp(struct vhdfooter *in_footer)
 {
 
-	/* We get the VHD time by adding the unix time for January 1st 2000 to the seconds in
-	   dicated by the footer. The result is then converted to a human readable string. */
 	time_t sec;
 
 	sec = (time_t) (WIN_REF_TIME + htonl(in_footer->timestamp));
@@ -44,13 +45,13 @@ void read_timestamp(struct vhdfooter *in_footer)
 
 }
 
-unsigned int current_timestamp(void)
+uint32_t current_timestamp(void)
 {
 	time_t sec;
-	unsigned int timestamp = 0;
+	uint32_t timestamp = 0;
 	
 	sec = time(NULL);
-	timestamp = (unsigned int) (sec) - WIN_REF_TIME;
+	timestamp = (uint32_t) (sec) - WIN_REF_TIME;
 
 	return timestamp;
 
@@ -122,9 +123,9 @@ void footer_print(struct vhdfooter in_footer)
 	printf("structSize:\t%lu\n",FOOTER_SIZE);
 }
 
-unsigned int footer_checksum(struct vhdfooter in_footer)
+uint32_t footer_checksum(struct vhdfooter in_footer)
 {
-	unsigned int checksum = 0, checksum_comp = 0;
+	uint32_t checksum = 0, checksum_comp = 0;
 	int i = 0, j = 0, k = 0;
 	unsigned char* char_ptr = 0;
 
@@ -146,7 +147,7 @@ int main(int argc, char *argv[])
 {
 	FILE *myfile;
 	int i=0;
-	unsigned int checksum = 0;
+	uint32_t checksum = 0, ctimestamp = 0;
 	struct vhdfooter footer;
 
 	myfile=fopen(argv[1],"rb");
@@ -156,7 +157,7 @@ int main(int argc, char *argv[])
 
 	footer_print(footer);
 
-	printf("given checksum: %u\n",htonl(footer.checksum));
+	printf("given checksum: %u\n", be32toh(footer.checksum));
 
 	checksum = footer_checksum(footer);
 	printf("computed checksum: %u\n",checksum);
@@ -164,19 +165,19 @@ int main(int argc, char *argv[])
 	read_timestamp(&footer);
 	
 	/* stop using checksum here, just a placeholder! */
-	checksum = current_timestamp();
-	printf("%u\t%u\n", checksum,htonl(checksum));
+	ctimestamp = current_timestamp();
+	printf("%u\t%u\n", ctimestamp, be32toh(ctimestamp));
 
 	/* the timestamp needs to be stored as big-endian, so switch before writing.
 	   again stop using checksum variable */
 
-	footer.timestamp = htonl(checksum);
+	footer.timestamp = be32toh(ctimestamp);
 
 	myfile = fopen("./output-test","wb");
 	fwrite(&footer,FOOTER_SIZE,1,myfile);
 
 	/* better check endianness here first (only works on intel arch for now...) */
-	printf("size in bytes: %llu\n", __builtin_bswap64(footer.originalsize));
+	printf("size in bytes: %llu\n", be64toh(footer.originalsize));
 
     return 0;
 }
