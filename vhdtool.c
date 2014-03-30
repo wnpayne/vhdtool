@@ -70,7 +70,7 @@ void fixString(int originalLen, char *originalString, char *fixedString)
 }
 
 /* provide a pointer to a "string" (actually just a memory address), and the number of bytes to print. */
-void printbytes(char *toprint, int len)
+void printbytes(char *toprint, int len, int hexcase)
 {
 
 	int i=0;
@@ -140,6 +140,38 @@ uint32_t footer_checksum(struct vhdfooter in_footer)
 //	return checksum;
 }
 
+void guid_print(struct vhdfooter in_footer)
+{
+	struct guid {
+		uint32_t data1;
+		uint16_t data2;
+		uint16_t data3;
+		uint64_t data4;
+	};
+	struct guid *inguid = (struct guid *) &in_footer.uuid;
+	uint16_t fd2 = 0, fd3 = 0;
+	uint32_t fd1 = 0;
+	uint64_t fd4 = 0;
+	
+	fd1 = htobe32(inguid->data1);
+	fd2 = htobe16(inguid->data2);
+	fd3 = htobe16(inguid->data3);
+	fd4 = inguid->data4;
+
+	printf("{");
+	printbytes((char *) &fd1, 4);
+	printf("-");
+	printbytes((char *) &fd2, 2);
+	printf("-");
+	printbytes((char *) &fd3, 2);
+	printf("-");
+	printbytes((char *) &fd4, 2);
+	printf("-");
+	printbytes((char *) &fd4 + 2, 6);
+	printf("}");
+	printf("\n");
+}
+
 int main(int argc, char *argv[])
 {
 	FILE *myfile;
@@ -176,6 +208,7 @@ int main(int argc, char *argv[])
 	fclose(myfile);
 
 	printf("size in bytes: %llu\n", be64toh(footer.originalsize));
+	guid_print(footer);
 
     return 0;
 }
