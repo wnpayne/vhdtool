@@ -70,7 +70,7 @@ void fixString(int originalLen, char *originalString, char *fixedString)
 }
 
 /* provide a pointer to a "string" (actually just a memory address), and the number of bytes to print. */
-void printbytes(char *toprint, int len, int hexcase)
+void printbytes(char *toprint, int len)
 {
 
 	int i=0;
@@ -139,6 +139,15 @@ uint32_t footer_checksum(struct vhdfooter in_footer)
 	return ~checksum;	
 //	return checksum;
 }
+void printbytes_guid(char *toprint, int len)
+{
+
+	int i=0;
+	for (i=0;i<len;i++) {
+		printf("%02X",(unsigned char) toprint[i]);
+	}
+
+}
 
 void guid_print(struct vhdfooter in_footer)
 {
@@ -158,16 +167,16 @@ void guid_print(struct vhdfooter in_footer)
 	fd3 = htobe16(inguid->data3);
 	fd4 = inguid->data4;
 
-	printf("{");
-	printbytes((char *) &fd1, 4);
+	printf("GUID:\t{");
+	printbytes_guid((char *) &fd1, 4);
 	printf("-");
-	printbytes((char *) &fd2, 2);
+	printbytes_guid((char *) &fd2, 2);
 	printf("-");
-	printbytes((char *) &fd3, 2);
+	printbytes_guid((char *) &fd3, 2);
 	printf("-");
-	printbytes((char *) &fd4, 2);
+	printbytes_guid((char *) &fd4, 2);
 	printf("-");
-	printbytes((char *) &fd4 + 2, 6);
+	printbytes_guid((char *) &fd4 + 2, 6);
 	printf("}");
 	printf("\n");
 }
