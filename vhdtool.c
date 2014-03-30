@@ -1,7 +1,3 @@
-/* NOTE: for the moment this will only work correctly on little-endian architectures. 
-   A little more work and it should be architecture neutral. */
-
-
 #include<stdio.h>
 #include<time.h>
 #include<stdint.h>
@@ -164,19 +160,20 @@ int main(int argc, char *argv[])
 	printf("\n");
 	read_timestamp(&footer);
 	
-	/* stop using checksum here, just a placeholder! */
 	ctimestamp = current_timestamp();
 	printf("%u\t%u\n", ctimestamp, be32toh(ctimestamp));
 
 	/* the timestamp needs to be stored as big-endian, so switch before writing.
 	   again stop using checksum variable */
 
-	footer.timestamp = be32toh(ctimestamp);
+	/* test writing a new header with changed timestamp */
 
+	footer.timestamp = htobe32(ctimestamp);
+	
 	myfile = fopen("./output-test","wb");
 	fwrite(&footer,FOOTER_SIZE,1,myfile);
+	fclose(myfile);
 
-	/* better check endianness here first (only works on intel arch for now...) */
 	printf("size in bytes: %llu\n", be64toh(footer.originalsize));
 
     return 0;
