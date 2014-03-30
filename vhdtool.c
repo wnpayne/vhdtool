@@ -2,6 +2,7 @@
 #include<time.h>
 #include<stdint.h>
 #include<endian.h>
+#include<uuid/uuid.h>
 
 /* Microsoft VHD file footer. 512 bytes, spec: http://download.microsoft.com/download/f/f/e/ffef50a5-07dd-4cf8-aaa3-442c0673a029/Virtual%20Hard%20Disk%20Format%20Spec_10_18_06.doc */
 
@@ -178,6 +179,7 @@ void guid_print(struct vhdfooter in_footer)
 	printf("}");
 	printf("\n");
 }
+
 void print_geo(struct vhdfooter in_footer)
 {
 	struct geo {
@@ -189,6 +191,33 @@ void print_geo(struct vhdfooter in_footer)
 	geo1 = *((struct geo *) &in_footer.diskgeo);
 	printf("disk geometry: %u/%u/%u\n", be16toh(geo1.cylinders),geo1.heads,geo1.sectors);
 }
+
+int createvhd(void) {
+	/*
+	 * things to calculate:
+	 * 	timestamp,  original size, current size, disk geo, checksum, uuid
+	 * things to invent:
+	 * 	cookie, capp, creator ver
+	 * given:
+	 * 	features, format, hostos, offset, disk type, saved state
+	 *
+	 *
+	 * need to implement: 	customizable timestamp?
+	 * 			size input (eventual detection)
+	 * 			functions for size -> geo
+	 * 			generating uuid
+	 * 			hooking in extant checksum fn.
+	 */
+
+	uuid_t uuid1;
+
+	uuid_generate_time_safe(uuid1);
+	printf("%s\n",uuid_unparse_lower(
+	printbytes((char *) uuid1,16);
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	FILE *myfile;
@@ -214,9 +243,7 @@ int main(int argc, char *argv[])
 	printf("%u\t%u\n", ctimestamp, be32toh(ctimestamp));
 
 	/* the timestamp needs to be stored as big-endian, so switch before writing.
-	   again stop using checksum variable */
-
-	/* test writing a new header with changed timestamp */
+	 * test writing a new header with changed timestamp */
 
 	footer.timestamp = htobe32(ctimestamp);
 	
@@ -229,6 +256,7 @@ int main(int argc, char *argv[])
 	printf("\n");
 
 	print_geo(footer);
+	createvhd();
 
     return 0;
 }
