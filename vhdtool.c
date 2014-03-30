@@ -4,27 +4,29 @@
 
 #include<stdio.h>
 #include<time.h>
+#include<stdint.h>
 
 /* Microsoft VHD file footer. 512 bytes, spec: http://download.microsoft.com/download/f/f/e/ffef50a5-07dd-4cf8-aaa3-442c0673a029/Virtual%20Hard%20Disk%20Format%20Spec_10_18_06.doc */
 
 /* Unix time for January 1st 2000 UTC. The timestamp format is a big-endian 
    integer containing the number of seconds since January 1st 2000 UTC. */
 #define WIN_REF_TIME 946713600
+#define FOOTER_SIZE 512
 
 struct vhdfooter {
 	unsigned char cookie[8];
-	unsigned int features;
-	unsigned int fileformat;
-	unsigned long int dataoffset;
-	unsigned int timestamp;
+	uint32_t features;
+	uint32_t fileformat;
+	uint64_t dataoffset;
+	uint32_t timestamp;
 	unsigned char cApp[4];
-	unsigned int cVer;
-	unsigned int cOS;
-	unsigned long int originalsize;
-	unsigned long int currentsize;
-	unsigned int diskgeo;
-	unsigned int disktype;
-	unsigned int checksum;
+	uint32_t cVer;
+	uint32_t cOS;
+	uint64_t originalsize;
+	uint64_t currentsize;
+	uint32_t diskgeo;
+	uint32_t disktype;
+	uint32_t checksum;
 	unsigned char uuid[16];
 	unsigned char savedstate;
 	unsigned char reserved[427]; 
@@ -117,7 +119,7 @@ void footer_print(struct vhdfooter in_footer)
 	printbytes((char *) &in_footer.uuid,16);
 	printf("\n\n");
     
-	printf("structSize:\t%lu\n",sizeof(struct vhdfooter));
+	printf("structSize:\t%lu\n",FOOTER_SIZE);
 }
 
 unsigned int footer_checksum(struct vhdfooter in_footer)
@@ -129,7 +131,7 @@ unsigned int footer_checksum(struct vhdfooter in_footer)
 	in_footer.checksum = 0;
 	char_ptr = (unsigned char *) &in_footer;
 
-	for(i=0;i<sizeof(struct vhdfooter);i++) {
+	for(i=0;i < FOOTER_SIZE;i++) {
 		checksum += (*char_ptr);
 		char_ptr = char_ptr + 1;
 //		printf("%u %u %u\n",i,*char_ptr,checksum);
@@ -149,7 +151,7 @@ int main(int argc, char *argv[])
 
 	myfile=fopen(argv[1],"rb");
 
-	fread(&footer,sizeof (struct vhdfooter),1,myfile);
+	fread(&footer,FOOTER_SIZE,1,myfile);
 	fclose(myfile);
 
 	footer_print(footer);
@@ -171,7 +173,7 @@ int main(int argc, char *argv[])
 	footer.timestamp = htonl(checksum);
 
 	myfile = fopen("./output-test","wb");
-	fwrite(&footer,sizeof(struct vhdfooter),1,myfile);
+	fwrite(&footer,FOOTER_SIZE,1,myfile);
 
 	/* better check endianness here first (only works on intel arch for now...) */
 	printf("size in bytes: %llu\n", __builtin_bswap64(footer.originalsize));

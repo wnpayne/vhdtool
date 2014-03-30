@@ -1,3 +1,18 @@
+goals:
+
+read and change parts of current vhd files and vhd footer stubs.
+create new vhd files
+	for now: just concentrate on adding a footer to existing raw files. this seems the most useful, i
+	then a wrapper script around this with fallocate or dd could set up the rest. Maybe do this with file seeking or writing zeros
+	'by hand' in c if we need to/want to/ends up we need to respect geometry.
+
+understand geometry
+make pretty printing of all values
+show values as hex (big endian, as stored in file) and base 10
+make it easy to change values
+make sure everything works in windows!
+
+--------------------
 
 Currently working on:
 figure out C/H/S algorithm? Implement it, so that I can add a VHD header to an already exisiting image file. Or create an image file and define the CHS in the header.
