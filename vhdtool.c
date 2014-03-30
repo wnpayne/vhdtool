@@ -11,6 +11,13 @@
 #define WIN_REF_TIME 946713600
 #define FOOTER_SIZE 512
 
+struct guid {
+	uint32_t data1;
+	uint16_t data2;
+	uint16_t data3;
+	uint64_t data4;
+};
+
 struct vhdfooter {
 	unsigned char cookie[8];
 	uint32_t features;
@@ -133,7 +140,6 @@ uint32_t footer_checksum(struct vhdfooter in_footer)
 	for(i=0;i < FOOTER_SIZE;i++) {
 		checksum_neg += (*char_ptr);
 		char_ptr = char_ptr + 1;
-//		printf("%u %u %u\n",i,*char_ptr,checksum);
 	}
 	
 	return ~checksum_neg;	
@@ -150,12 +156,6 @@ void printbytes_guid(char *toprint, int len)
 
 void guid_print(struct vhdfooter in_footer)
 {
-	struct guid {
-		uint32_t data1;
-		uint16_t data2;
-		uint16_t data3;
-		uint64_t data4;
-	};
 	struct guid *inguid = (struct guid *) &in_footer.uuid;
 	uint16_t fd2 = 0, fd3 = 0;
 	uint32_t fd1 = 0;
@@ -192,7 +192,7 @@ void print_geo(struct vhdfooter in_footer)
 	printf("disk geometry: %u/%u/%u\n", be16toh(geo1.cylinders),geo1.heads,geo1.sectors);
 }
 
-int createvhd(void) {
+int createvhd(struct vhdfooter footer) {
 	/*
 	 * things to calculate:
 	 * 	timestamp,  original size, current size, disk geo, checksum, uuid
@@ -212,8 +212,18 @@ int createvhd(void) {
 	uuid_t uuid1;
 
 	uuid_generate_time_safe(uuid1);
-	printf("%s\n",uuid_unparse_lower(
+	char uuid_str[37];
+	uuid_unparse_lower(uuid1,uuid_str);
+	printf("uuid-gen: %s\n",uuid_str);
 	printbytes((char *) uuid1,16);
+	struct guid *guid1 = (struct guid *) &uuid1;
+	struct guid *guid2 = (struct guid *) &footer.uuid;
+	guid1->data1 = be32toh(guid1->data1);
+	guid1->data2 = be16toh(guid1->data2);
+	guid1->data3 = be16toh(guid1->data3);
+	*guid2 = *guid1;
+	guid_print(footer);
+
 
 	return 0;
 }
@@ -256,7 +266,7 @@ int main(int argc, char *argv[])
 	printf("\n");
 
 	print_geo(footer);
-	createvhd();
+	createvhd(footer);
 
     return 0;
 }
