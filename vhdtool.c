@@ -122,7 +122,7 @@ void footer_print(struct vhdfooter in_footer)
 
 uint32_t footer_checksum(struct vhdfooter in_footer)
 {
-	uint32_t checksum = 0, checksum_comp = 0;
+	uint32_t checksum_neg = 0;
 	int i = 0, j = 0, k = 0;
 	unsigned char* char_ptr = 0;
 
@@ -130,14 +130,12 @@ uint32_t footer_checksum(struct vhdfooter in_footer)
 	char_ptr = (unsigned char *) &in_footer;
 
 	for(i=0;i < FOOTER_SIZE;i++) {
-		checksum += (*char_ptr);
+		checksum_neg += (*char_ptr);
 		char_ptr = char_ptr + 1;
 //		printf("%u %u %u\n",i,*char_ptr,checksum);
 	}
 	
-	//return *(unsigned int *) &checksum_comp;	
-	return ~checksum;	
-//	return checksum;
+	return ~checksum_neg;	
 }
 void printbytes_guid(char *toprint, int len)
 {
@@ -180,7 +178,17 @@ void guid_print(struct vhdfooter in_footer)
 	printf("}");
 	printf("\n");
 }
-
+void print_geo(struct vhdfooter in_footer)
+{
+	struct geo {
+		uint16_t cylinders;
+		uint8_t heads;
+		uint8_t sectors;
+	};
+	struct geo geo1;
+	geo1 = *((struct geo *) &in_footer.diskgeo);
+	printf("disk geometry: %u/%u/%u\n", be16toh(geo1.cylinders),geo1.heads,geo1.sectors);
+}
 int main(int argc, char *argv[])
 {
 	FILE *myfile;
@@ -218,6 +226,9 @@ int main(int argc, char *argv[])
 
 	printf("size in bytes: %llu\n", be64toh(footer.originalsize));
 	guid_print(footer);
+	printf("\n");
+
+	print_geo(footer);
 
     return 0;
 }
