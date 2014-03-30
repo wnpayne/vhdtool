@@ -29,6 +29,7 @@ struct vhdfooter {
 	unsigned char reserved[427]; 
 };
 
+// tested this recently and it was off by seemingly 1 hour from a windows box. Seems to work on my machine. maybe a daylight savings problem with UTC?
 /* We get the VHD time by adding the unix time for January 1st 2000 to the seconds in
    dicated by the footer. The result is then converted to a human readable string. */
 void read_timestamp(struct vhdfooter *in_footer)
@@ -36,7 +37,7 @@ void read_timestamp(struct vhdfooter *in_footer)
 
 	time_t sec;
 
-	sec = (time_t) (WIN_REF_TIME + htonl(in_footer->timestamp));
+	sec = (time_t) (WIN_REF_TIME + be32toh(in_footer->timestamp));
 	printf(ctime(&sec));
 
 }
@@ -69,7 +70,7 @@ void fixString(int originalLen, char *originalString, char *fixedString)
 }
 
 /* provide a pointer to a "string" (actually just a memory address), and the number of bytes to print. */
-void printbytes(char *toprint,int len)
+void printbytes(char *toprint, int len)
 {
 
 	int i=0;
