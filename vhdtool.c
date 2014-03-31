@@ -11,6 +11,12 @@
 #define WIN_REF_TIME 946713600
 #define FOOTER_SIZE 512
 
+struct geo {
+	uint16_t cylinders;
+	uint8_t heads;
+	uint8_t sectors;
+};
+
 struct guid {
 	uint32_t data1;
 	uint16_t data2;
@@ -29,10 +35,10 @@ struct vhdfooter {
 	uint32_t cOS;
 	uint64_t originalsize;
 	uint64_t currentsize;
-	uint32_t diskgeo;
+	struct geo diskgeo;
 	uint32_t disktype;
 	uint32_t checksum;
-	unsigned char uuid[16];
+	struct guid uuid;
 	unsigned char savedstate;
 	unsigned char reserved[427]; 
 };
@@ -182,17 +188,10 @@ void guid_print(struct vhdfooter in_footer)
 
 void print_geo(struct vhdfooter in_footer)
 {
-	struct geo {
-		uint16_t cylinders;
-		uint8_t heads;
-		uint8_t sectors;
-	};
-	struct geo geo1;
-	geo1 = *((struct geo *) &in_footer.diskgeo);
-	printf("disk geometry: %u/%u/%u\n", be16toh(geo1.cylinders),geo1.heads,geo1.sectors);
+	printf("disk geometry: %u/%u/%u\n", be16toh(in_footer.diskgeo.cylinders),in_footer.diskgeo.heads,in_footer.diskgeo.sectors);
 }
 
-int createvhd(struct vhdfooter footer) {
+int createvhd(struct vhdfooter in_footer) {
 	/*
 	 * things to calculate:
 	 * 	timestamp,  original size, current size, disk geo, checksum, uuid
@@ -217,12 +216,11 @@ int createvhd(struct vhdfooter footer) {
 	printf("uuid-gen: %s\n",uuid_str);
 	printbytes((char *) uuid1,16);
 	struct guid *guid1 = (struct guid *) &uuid1;
-	struct guid *guid2 = (struct guid *) &footer.uuid;
 	guid1->data1 = be32toh(guid1->data1);
 	guid1->data2 = be16toh(guid1->data2);
 	guid1->data3 = be16toh(guid1->data3);
-	*guid2 = *guid1;
-	guid_print(footer);
+	in_footer.uuid = *guid1;
+	guid_print(in_footer);
 
 
 	return 0;
