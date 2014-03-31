@@ -33,3 +33,5 @@ same file behavior, but output footer read in from end of <file>
 this is mostly only usefull if <out_file> is a new file.
 
 *maybe* later enable editing of individual fields
+
+c flag overrides l flag

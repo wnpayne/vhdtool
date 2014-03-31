@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<time.h>
 #include<stdint.h>
+#include<unistd.h>
 #include<endian.h>
 #include<uuid/uuid.h>
 
@@ -153,12 +154,10 @@ uint32_t footer_checksum(struct vhdfooter in_footer)
 
 void printbytes_guid(char *toprint, int len)
 {
-
 	int i=0;
 	for (i=0;i<len;i++) {
 		printf("%02X",(unsigned char) toprint[i]);
 	}
-
 }
 
 void guid_print(struct vhdfooter in_footer)
@@ -189,7 +188,8 @@ void guid_print(struct vhdfooter in_footer)
 
 void print_geo(struct vhdfooter in_footer)
 {
-	printf("disk geometry: %u/%u/%u\n", be16toh(in_footer.diskgeo.cylinders),in_footer.diskgeo.heads,in_footer.diskgeo.sectors);
+	printf("disk geometry: %u/%u/%u\n", be16toh(in_footer.diskgeo.cylinders),
+				in_footer.diskgeo.heads,in_footer.diskgeo.sectors);
 }
 
 int createvhd(struct vhdfooter in_footer) {
@@ -256,18 +256,50 @@ void listfields(struct vhdfooter in_footer)
 	print_geo(in_footer);
 }
 
+int outputfooter(struct vhdfooter in_footer, char *outpath)
+{
+	FILE *outfile;
+
+	outfile = fopen(outpath,"wb");
+	fwrite(&in_footer,FOOTER_SIZE,1,outfile);
+	fclose(outfile);
+	
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	FILE *myfile;
 	struct vhdfooter footer;
+	int arg, hflag = 0, lflag = 0, cflag = 0;
+	char *cvalue = NULL;
 
-	myfile=fopen(argv[1],"rb");
+	myfile=fopen(argv[argc - 1],"rb");
 
 	fread(&footer,FOOTER_SIZE,1,myfile);
 	fclose(myfile);
 
-	listfields(footer);
-	createvhd(footer);
+	while ((arg = getopt(argc, argv, "hlo:c")) != -1) {
+		switch (arg) {
+		case 'h':
+			printf("h flag!\n");
+			break;
+		case 'l':
+			listfields(footer);
+			break;
+		case 'c':
+			createvhd(footer);
+			break;
+		case 'o':
+			printf("o flag!\n");
+			cvalue = optarg;
+			printf("%s\n",cvalue);
+			outputfooter(footer, cvalue);
+			break;
+		default:
+			printf("no options!");
+		}
+	}
 
     return 0;
 }

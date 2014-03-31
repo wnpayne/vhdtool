@@ -1,3 +1,6 @@
+finish output testing
+figure out when to open and close files. 
+take account for errors and error messages!
 goals:
 
 read and change parts of current vhd files and vhd footer stubs.
