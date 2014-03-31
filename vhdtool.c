@@ -150,6 +150,7 @@ uint32_t footer_checksum(struct vhdfooter in_footer)
 	
 	return ~checksum_neg;	
 }
+
 void printbytes_guid(char *toprint, int len)
 {
 
@@ -209,13 +210,9 @@ int createvhd(struct vhdfooter in_footer) {
 	 */
 
 	uuid_t uuid1;
+	struct guid *guid1 = (struct guid *) &uuid1;
 
 	uuid_generate_time_safe(uuid1);
-	char uuid_str[37];
-	uuid_unparse_lower(uuid1,uuid_str);
-	printf("uuid-gen: %s\n",uuid_str);
-	printbytes((char *) uuid1,16);
-	struct guid *guid1 = (struct guid *) &uuid1;
 	guid1->data1 = be32toh(guid1->data1);
 	guid1->data2 = be16toh(guid1->data2);
 	guid1->data3 = be16toh(guid1->data3);
@@ -226,26 +223,18 @@ int createvhd(struct vhdfooter in_footer) {
 	return 0;
 }
 
-int main(int argc, char *argv[])
+void listfields(struct vhdfooter in_footer)
 {
-	FILE *myfile;
-	int i=0;
 	uint32_t checksum = 0, ctimestamp = 0;
-	struct vhdfooter footer;
 
-	myfile=fopen(argv[1],"rb");
+	footer_print(in_footer);
 
-	fread(&footer,FOOTER_SIZE,1,myfile);
-	fclose(myfile);
+	printf("given checksum: %u\n", be32toh(in_footer.checksum));
 
-	footer_print(footer);
-
-	printf("given checksum: %u\n", be32toh(footer.checksum));
-
-	checksum = footer_checksum(footer);
+	checksum = footer_checksum(in_footer);
 	printf("computed checksum: %u\n",checksum);
 	printf("\n");
-	read_timestamp(footer);
+	read_timestamp(in_footer);
 	
 	ctimestamp = current_timestamp();
 	printf("%u\t%u\n", ctimestamp, be32toh(ctimestamp));
@@ -253,17 +242,31 @@ int main(int argc, char *argv[])
 	/* the timestamp needs to be stored as big-endian, so switch before writing.
 	 * test writing a new header with changed timestamp */
 
-	footer.timestamp = htobe32(ctimestamp);
+	/* output testing:
+	in_footer.timestamp = htobe32(ctimestamp);
 	
 	myfile = fopen("./output-test","wb");
-	fwrite(&footer,FOOTER_SIZE,1,myfile);
-	fclose(myfile);
+	fwrite(&in_footer,FOOTER_SIZE,1,myfile);
+	fclose(myfile); */
 
-	printf("size in bytes: %llu\n", be64toh(footer.originalsize));
-	guid_print(footer);
+	printf("size in bytes: %llu\n", be64toh(in_footer.originalsize));
+	guid_print(in_footer);
 	printf("\n");
 
-	print_geo(footer);
+	print_geo(in_footer);
+}
+
+int main(int argc, char *argv[])
+{
+	FILE *myfile;
+	struct vhdfooter footer;
+
+	myfile=fopen(argv[1],"rb");
+
+	fread(&footer,FOOTER_SIZE,1,myfile);
+	fclose(myfile);
+
+	listfields(footer);
 	createvhd(footer);
 
     return 0;
