@@ -1,3 +1,8 @@
+(1) clean up this document
+(2) we should check the checksum value, and alert user if there is a mismatch
+(3) we should have a -q option (or a -v option?)
+
+
 finish output testing
 figure out when to open and close files. 
 take account for errors and error messages!
