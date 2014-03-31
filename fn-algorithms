@@ -1,0 +1,35 @@
+
+-l --list-fields
+
+-h --hex
+
+-o --output
+
+-c --create
+
+list-fields:
+gather up the pretty printing code and put it in one function
+make it take an argument to control if hex values are printed/also printed.
+make this the default behavior for no arguments
+
+hex:
+set the flag to make list print hex data
+
+create:
+-c flag
+read <file> and create new footer based on <file>
+defaults to -o <file>, that is, appending to given file.
+
+output:
+-o <out_file>
+output to <out_file>
+
+-c:
+output footer created from <file>
+seek to end of file and output footer.
+
+-l:
+same file behavior, but output footer read in from end of <file>
+this is mostly only usefull if <out_file> is a new file.
+
+*maybe* later enable editing of individual fields
