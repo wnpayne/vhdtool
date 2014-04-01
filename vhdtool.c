@@ -25,6 +25,8 @@ struct guid {
 	uint64_t data4;
 };
 
+/* define uuid as byte array to avoid padding issues */
+
 struct vhdfooter {
 	unsigned char cookie[8];
 	uint32_t features;
@@ -39,7 +41,7 @@ struct vhdfooter {
 	struct geo diskgeo;
 	uint32_t disktype;
 	uint32_t checksum;
-	struct guid uuid;
+	unsigned char uuid[16];
 	unsigned char savedstate;
 	unsigned char reserved[427]; 
 };
@@ -163,8 +165,8 @@ void printbytes_guid(char *toprint, int len)
 void guid_print(struct vhdfooter in_footer)
 {
 	struct guid *inguid = (struct guid *) &in_footer.uuid;
-	uint16_t fd2 = 0, fd3 = 0;
 	uint32_t fd1 = 0;
+	uint16_t fd2 = 0, fd3 = 0;
 	uint64_t fd4 = 0;
 	
 	fd1 = htobe32(inguid->data1);
@@ -211,12 +213,13 @@ int createvhd(struct vhdfooter in_footer) {
 
 	uuid_t uuid1;
 	struct guid *guid1 = (struct guid *) &uuid1;
+	struct guid *guid2 = (struct guid *) &in_footer.uuid;
 
 	uuid_generate_time_safe(uuid1);
 	guid1->data1 = be32toh(guid1->data1);
 	guid1->data2 = be16toh(guid1->data2);
 	guid1->data3 = be16toh(guid1->data3);
-	in_footer.uuid = *guid1;
+	*guid2 = *guid1;
 	guid_print(in_footer);
 
 
