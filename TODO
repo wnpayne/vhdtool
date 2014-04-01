@@ -17,30 +17,16 @@ create new vhd files
 understand geometry
 make pretty printing of all values
 show values as hex (big endian, as stored in file) and base 10
-make it easy to change values
+(later goal) make it easy to change values
 make sure everything works in windows!
 
 --------------------
 
 Currently working on:
 figure out C/H/S algorithm? Implement it, so that I can add a VHD header to an already exisiting image file. Or create an image file and define the CHS in the header.
-read those articles about sector alignment and figure out if that can work here. 
-this should be fun!
 
+(find this article!)read those articles about sector alignment and figure out if that can work here. 
 
-
-fields to implement/understand/verify:
-
-1. creator version
-2. hostOS
-3. time stamp
-4. original/current size
-5. disk geo
-6. uuid pretty print
-
-
-
-learn about bitfields!
 
 separate code into .h and .c files
 
