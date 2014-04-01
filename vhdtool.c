@@ -276,6 +276,7 @@ int main(int argc, char *argv[])
 	struct vhdfooter footer;
 	int arg, hflag = 0, lflag = 0, cflag = 0;
 	char *cvalue = NULL;
+	uint32_t checksum;
 
 	myfile=fopen(argv[argc - 1],"rb");
 
@@ -297,12 +298,17 @@ int main(int argc, char *argv[])
 			printf("o flag!\n");
 			cvalue = optarg;
 			printf("%s\n",cvalue);
+		/* 	footer.diskgeo.cylinders = 0;
+			footer.diskgeo.heads= 0;
+			footer.diskgeo.sectors= 0; */
+			footer.cVer = 50333184;
 			outputfooter(footer, cvalue);
 			break;
 		default:
 			printf("no options!");
 		}
 	}
+	printf("%d\n",footer.cVer);
 
     return 0;
 }
