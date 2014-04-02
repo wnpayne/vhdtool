@@ -280,6 +280,10 @@ int main(int argc, char *argv[])
 
 	myfile=fopen(argv[argc - 1],"rb");
 
+	if (!myfile) {
+		printf("bad file! improve this message and handling...");
+	}
+	fseek(myfile,-512,SEEK_END);
 	fread(&footer,FOOTER_SIZE,1,myfile);
 	fclose(myfile);
 
