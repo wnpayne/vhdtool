@@ -134,7 +134,7 @@ void footer_print(struct vhdfooter in_footer)
 	printbytes((char *) &in_footer.uuid,16);
 	printf("\n\n");
     
-	printf("structSize:\t%lu\n",FOOTER_SIZE);
+	printf("structSize:\t%lu\n",sizeof(struct vhdfooter));
 }
 
 uint32_t footer_checksum(struct vhdfooter in_footer)
@@ -165,25 +165,20 @@ void printbytes_guid(char *toprint, int len)
 void guid_print(struct vhdfooter in_footer)
 {
 	struct guid *inguid = (struct guid *) &in_footer.uuid;
-	uint32_t fd1 = 0;
-	uint16_t fd2 = 0, fd3 = 0;
-	uint64_t fd4 = 0;
-	
-	fd1 = htobe32(inguid->data1);
-	fd2 = htobe16(inguid->data2);
-	fd3 = htobe16(inguid->data3);
-	fd4 = inguid->data4;
+	inguid->data1  = htobe32(inguid->data1);
+	inguid->data2 = htobe16(inguid->data2);
+	inguid->data3  = htobe16(inguid->data3);
 
 	printf("GUID:\t{");
-	printbytes_guid((char *) &fd1, 4);
+	printbytes_guid((char *) &inguid->data1, 4);
 	printf("-");
-	printbytes_guid((char *) &fd2, 2);
+	printbytes_guid((char *) &inguid->data2, 2);
 	printf("-");
-	printbytes_guid((char *) &fd3, 2);
+	printbytes_guid((char *) &inguid->data3, 2);
 	printf("-");
-	printbytes_guid((char *) &fd4, 2);
+	printbytes_guid((char *) &inguid->data4, 2);
 	printf("-");
-	printbytes_guid((char *) &fd4 + 2, 6);
+	printbytes_guid((char *) &inguid->data4 + 2, 6);
 	printf("}");
 	printf("\n");
 }
@@ -211,15 +206,16 @@ int createvhd(struct vhdfooter in_footer) {
 	 * 			hooking in extant checksum fn.
 	 */
 
-	uuid_t uuid1;
-	struct guid *guid1 = (struct guid *) &uuid1;
-	struct guid *guid2 = (struct guid *) &in_footer.uuid;
+	uuid_t new_uuid;
+	struct guid *new_guid = (struct guid *) &new_uuid;
+	struct guid *footer_guid = (struct guid *) &in_footer.uuid;
 
-	uuid_generate_time_safe(uuid1);
-	guid1->data1 = be32toh(guid1->data1);
-	guid1->data2 = be16toh(guid1->data2);
-	guid1->data3 = be16toh(guid1->data3);
-	*guid2 = *guid1;
+	uuid_generate_time_safe(new_uuid);
+	/* mmicrosoft stores data1,data2,data3 in native endianness, we need to convert */
+	new_guid->data1 = be32toh(new_guid->data1);
+	new_guid->data2 = be16toh(new_guid->data2);
+	new_guid->data3 = be16toh(new_guid->data3);
+	*footer_guid = *new_guid;
 	guid_print(in_footer);
 
 
