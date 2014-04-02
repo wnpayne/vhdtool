@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<time.h>
 #include<stdint.h>
+#include<inttypes.h>
 #include<unistd.h>
 #include<endian.h>
 #include<uuid/uuid.h>
@@ -49,13 +50,13 @@ struct vhdfooter {
 // tested this recently and it was off by seemingly 1 hour from a windows box. Seems to work on my machine. maybe a daylight savings problem with UTC?
 /* We get the VHD time by adding the unix time for January 1st 2000 to the seconds in
    dicated by the footer. The result is then converted to a human readable string. */
-void read_timestamp(struct vhdfooter in_footer)
+time_t read_timestamp(struct vhdfooter in_footer)
 {
 
 	time_t sec;
 
 	sec = (time_t) (WIN_REF_TIME + be32toh(in_footer.timestamp));
-	printf(ctime(&sec));
+	return sec;
 
 }
 
@@ -68,7 +69,6 @@ uint32_t current_timestamp(void)
 	timestamp = (uint32_t) (sec) - WIN_REF_TIME;
 
 	return timestamp;
-
 }
 
 /* provide (1) original string without a null terminator.
@@ -83,29 +83,20 @@ void fixString(int originalLen, char *originalString, char *fixedString)
 	{
 		fixedString[i]=originalString[i];
 	}
-
 }
 
 /* provide a pointer to a "string" (actually just a memory address), and the number of bytes to print. */
 void printbytes(char *toprint, int len)
 {
-
 	int i=0;
 	for (i=0;i<len;i++) {
 		printf("%02X ",(unsigned char) toprint[i]);
 	}
-
 }
 
 /* Pretty print the (mostly) raw bytes of the footer. */
 void footer_print(struct vhdfooter in_footer)
 {
-	char fixed_cookie[9]="";
-	char fixed_cApp[5]="";
-	
-    	fixString(8,in_footer.cookie,fixed_cookie);
-	fixString(4,in_footer.cApp,fixed_cApp);
-	printf("cookie:\t\"%s\"\ncapp:\t\"%s\"",fixed_cookie,fixed_cApp);
 	printf("\nFeatures:\t");
 	printbytes((char *) &in_footer.features,4);
 	printf("\nFile Format:\t");
@@ -139,8 +130,8 @@ void footer_print(struct vhdfooter in_footer)
 
 uint32_t footer_checksum(struct vhdfooter in_footer)
 {
+	int i = 0;
 	uint32_t checksum_neg = 0;
-	int i = 0, j = 0, k = 0;
 	unsigned char* char_ptr = 0;
 
 	in_footer.checksum = 0;
@@ -211,7 +202,7 @@ int createvhd(struct vhdfooter in_footer) {
 	struct guid *footer_guid = (struct guid *) &in_footer.uuid;
 
 	uuid_generate_time_safe(new_uuid);
-	/* mmicrosoft stores data1,data2,data3 in native endianness, we need to convert */
+	/* microsoft stores data1,data2,data3 in native endianess, rather than be as per uuids */
 	new_guid->data1 = be32toh(new_guid->data1);
 	new_guid->data2 = be16toh(new_guid->data2);
 	new_guid->data3 = be16toh(new_guid->data3);
@@ -225,30 +216,34 @@ int createvhd(struct vhdfooter in_footer) {
 void listfields(struct vhdfooter in_footer)
 {
 	uint32_t checksum = 0, ctimestamp = 0;
-
-	footer_print(in_footer);
-
-	printf("given checksum: %u\n", be32toh(in_footer.checksum));
-
+	char fixed_cookie[9]="";
+	char fixed_cApp[5]="";
+	time_t timestamp = (time_t) 0;
+	
+    	fixString(8,in_footer.cookie,fixed_cookie);
+	fixString(4,in_footer.cApp,fixed_cApp);
 	checksum = footer_checksum(in_footer);
-	printf("computed checksum: %u\n",checksum);
+	timestamp = read_timestamp(in_footer);
+
+	printf("Cookie:\t\t\t\"%s\"\n",fixed_cookie);
+	printf("Features:\t\t%" PRIu32 "\n",be32toh(in_footer.features));
+	printf("Format Version:\t\t%" PRIu32 "\n",be32toh(in_footer.fileformat));
+	printf("Data Offset:\t\t%" PRIu64 "\n",be64toh(in_footer.dataoffset));
+	printf("Created on:\t\t%s",ctime(&timestamp));
+	printf("Creator App:\t\t\"%s\"\n",fixed_cApp);
+	printf("Creator Version:\t%" PRIu32 "\n",be32toh(in_footer.cVer));
+	printf("Creator OS:\t\t%" PRIu32 "\n",be32toh(in_footer.cOS));
+	printf("Original Size [b]:\t%" PRIu32 "\n", be64toh(in_footer.originalsize));
+	printf("Current Size [b]:\t%" PRIu32 "\n", be64toh(in_footer.currentsize));
+	//diskgeo
+	//disktype
+	//checksum
+	printf("Checksum:\t\t%" PRIu32 "\n", be32toh(in_footer.checksum));
+	printf("Computed Checksum:\t%" PRIu32  "\n",checksum);
+	//uuid
+	//savedstate
+
 	printf("\n");
-	read_timestamp(in_footer);
-	
-	ctimestamp = current_timestamp();
-	printf("%u\t%u\n", ctimestamp, be32toh(ctimestamp));
-
-	/* the timestamp needs to be stored as big-endian, so switch before writing.
-	 * test writing a new header with changed timestamp */
-
-	/* output testing:
-	in_footer.timestamp = htobe32(ctimestamp);
-	
-	myfile = fopen("./output-test","wb");
-	fwrite(&in_footer,FOOTER_SIZE,1,myfile);
-	fclose(myfile); */
-
-	printf("size in bytes: %llu\n", be64toh(in_footer.originalsize));
 	guid_print(in_footer);
 	printf("\n");
 
@@ -258,6 +253,15 @@ void listfields(struct vhdfooter in_footer)
 int outputfooter(struct vhdfooter in_footer, char *outpath)
 {
 	FILE *outfile;
+	/* the timestamp needs to be stored as big-endian, so switch before writing.
+	 * test writing a new header with changed timestamp */
+
+	/* output testing:
+	in_footer.timestamp = htobe32(ctimestamp);
+	
+	myfile = fopen("./output-test","wb");
+	fwrite(&in_footer,FOOTER_SIZE,1,myfile);
+	fclose(myfile); */
 
 	outfile = fopen(outpath,"wb");
 	fwrite(&in_footer,FOOTER_SIZE,1,outfile);
