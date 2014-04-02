@@ -97,35 +97,37 @@ void printbytes(char *toprint, int len)
 /* Pretty print the (mostly) raw bytes of the footer. */
 void footer_print(struct vhdfooter in_footer)
 {
-	printf("\nFeatures:\t");
+	printf("Cookie:\t\t\t");
+	printbytes(in_footer.cookie,8);
+	printf("\nFeatures:\t\t");
 	printbytes((char *) &in_footer.features,4);
-	printf("\nFile Format:\t");
+	printf("\nFile Format:\t\t");
 	printbytes((char *) &in_footer.fileformat,4);
-	printf("\nCreatorr Ver:\t");
+	printf("\nCreatorr Ver:\t\t");
 	printbytes((char *) &in_footer.cVer,4);
-	printf("\nCreator HostOS:\t");
+	printf("\nCreator HostOS:\t\t");
 	printbytes((char *) &in_footer.cOS,4);
-	printf("\nData Offset:\t");
+	printf("\nData Offset:\t\t");
 	printbytes((char *) &in_footer.dataoffset,8);
-	printf("\nTime Stamp:\t");
+	printf("\nTime Stamp:\t\t");
 	printbytes((char *) &in_footer.timestamp,4);
-	printf("\nOriginal Size:\t");
+	printf("\nOriginal Size:\t\t");
 	printbytes((char *) &in_footer.originalsize,8);
-	printf("\nCurrent Size:\t");
+	printf("\nCurrent Size:\t\t");
 	printbytes((char *) &in_footer.currentsize,8);
-	printf("\nDisk Geo:\t");
+	printf("\nDisk Geo:\t\t");
 	printbytes((char *) &in_footer.diskgeo,4);
-	printf("\nDisk Type:\t");
+	printf("\nDisk Type:\t\t");
 	printbytes((char *) &in_footer.disktype,4);
-	printf("\nChecksum:\t");
+	printf("\nChecksum:\t\t");
 	printbytes((char *) &in_footer.checksum,4);
-	printf("\nSaved State:\t");
+	printf("\nSaved State:\t\t");
 	printbytes((char *) &in_footer.savedstate,1);
-	printf("\nuuid:\t\t");
+	printf("\nuuid:\t\t\t");
 	printbytes((char *) &in_footer.uuid,16);
-	printf("\n\n");
+	printf("\n");
     
-	printf("structSize:\t%lu\n",sizeof(struct vhdfooter));
+	//printf("structSize:\t%lu\n",sizeof(struct vhdfooter));
 }
 
 uint32_t footer_checksum(struct vhdfooter in_footer)
@@ -160,7 +162,7 @@ void guid_print(struct vhdfooter in_footer)
 	inguid->data2 = htobe16(inguid->data2);
 	inguid->data3  = htobe16(inguid->data3);
 
-	printf("GUID:\t{");
+	printf("{");
 	printbytes_guid((char *) &inguid->data1, 4);
 	printf("-");
 	printbytes_guid((char *) &inguid->data2, 2);
@@ -171,13 +173,6 @@ void guid_print(struct vhdfooter in_footer)
 	printf("-");
 	printbytes_guid((char *) &inguid->data4 + 2, 6);
 	printf("}");
-	printf("\n");
-}
-
-void print_geo(struct vhdfooter in_footer)
-{
-	printf("disk geometry: %u/%u/%u\n", be16toh(in_footer.diskgeo.cylinders),
-				in_footer.diskgeo.heads,in_footer.diskgeo.sectors);
 }
 
 int createvhd(struct vhdfooter in_footer) {
@@ -215,7 +210,7 @@ int createvhd(struct vhdfooter in_footer) {
 
 void listfields(struct vhdfooter in_footer)
 {
-	uint32_t checksum = 0, ctimestamp = 0;
+	uint32_t checksum = 0, ctimestamp = 0, disktype = 0;
 	char fixed_cookie[9]="";
 	char fixed_cApp[5]="";
 	time_t timestamp = (time_t) 0;
@@ -224,6 +219,7 @@ void listfields(struct vhdfooter in_footer)
 	fixString(4,in_footer.cApp,fixed_cApp);
 	checksum = footer_checksum(in_footer);
 	timestamp = read_timestamp(in_footer);
+	disktype = be32toh(in_footer.disktype);
 
 	printf("Cookie:\t\t\t\"%s\"\n",fixed_cookie);
 	printf("Features:\t\t%" PRIu32 "\n",be32toh(in_footer.features));
@@ -235,19 +231,43 @@ void listfields(struct vhdfooter in_footer)
 	printf("Creator OS:\t\t%" PRIu32 "\n",be32toh(in_footer.cOS));
 	printf("Original Size [b]:\t%" PRIu32 "\n", be64toh(in_footer.originalsize));
 	printf("Current Size [b]:\t%" PRIu32 "\n", be64toh(in_footer.currentsize));
-	//diskgeo
-	//disktype
-	//checksum
+	printf("C/H/S:\t\t\t%" PRIu32 "/%" PRIu32 "/%" PRIu32 "\n", be16toh(in_footer.diskgeo.cylinders),
+				in_footer.diskgeo.heads,in_footer.diskgeo.sectors);
+	printf("Disktype:\t\t%");
+	switch (disktype) {
+	case 0:
+		printf("None\n");
+		break;
+	case 1:
+		printf("Deprecated\n");
+		break;
+	case 2:
+		printf("Fixed hard disk\n");
+		break;
+	case 3:
+		printf("Dynamic hard disk\n");
+		break;
+	case 4:
+		printf("Differencing hard disk\n");
+		break;
+	case 5:
+		printf("Deprecated\n");
+		break;
+	case 6:
+		printf("Deprecated\n");
+	}
 	printf("Checksum:\t\t%" PRIu32 "\n", be32toh(in_footer.checksum));
 	printf("Computed Checksum:\t%" PRIu32  "\n",checksum);
 	//uuid
-	//savedstate
-
-	printf("\n");
+	printf("GUID:\t\t\t");
 	guid_print(in_footer);
 	printf("\n");
-
-	print_geo(in_footer);
+	//savedstate
+	printf("Saved state:\t\t");
+	if ( in_footer.savedstate )
+		printf("Yes\n");
+	else
+		printf("No\n");
 }
 
 int outputfooter(struct vhdfooter in_footer, char *outpath)
@@ -290,7 +310,7 @@ int main(int argc, char *argv[])
 	while ((arg = getopt(argc, argv, "hlo:c")) != -1) {
 		switch (arg) {
 		case 'h':
-			printf("h flag!\n");
+			footer_print(footer);
 			break;
 		case 'l':
 			listfields(footer);
@@ -312,7 +332,5 @@ int main(int argc, char *argv[])
 			printf("no options!");
 		}
 	}
-	printf("%d\n",footer.cVer);
-
     return 0;
 }
