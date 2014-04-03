@@ -5,6 +5,7 @@
 #include<unistd.h>
 #include<endian.h>
 #include<uuid/uuid.h>
+#include<string.h>
 
 /* Microsoft VHD file footer. 512 bytes, spec: http://download.microsoft.com/download/f/f/e/ffef50a5-07dd-4cf8-aaa3-442c0673a029/Virtual%20Hard%20Disk%20Format%20Spec_10_18_06.doc */
 
@@ -42,7 +43,7 @@ struct vhdfooter {
 	struct geo diskgeo;
 	uint32_t disktype;
 	uint32_t checksum;
-	unsigned char uuid[16];
+	uuid_t uuid;
 	unsigned char savedstate;
 	unsigned char reserved[427]; 
 };
@@ -52,12 +53,10 @@ struct vhdfooter {
    dicated by the footer. The result is then converted to a human readable string. */
 time_t read_timestamp(struct vhdfooter *in_footer)
 {
-
 	time_t sec;
 
 	sec = (time_t) (WIN_REF_TIME + be32toh(in_footer->timestamp));
 	return sec;
-
 }
 
 uint32_t current_timestamp(void)
@@ -158,9 +157,9 @@ void printbytes_guid(char *toprint, int len)
 	}
 }
 
-void guid_print(char *inuuid)
+void guid_print(uuid_t *inuuid)
 {
-	struct guid inguid = *((struct guid *) inuuid);
+	struct guid inguid =*((struct guid *) inuuid);
 	inguid.data1  = htobe32(inguid.data1);
 	inguid.data2 = htobe16(inguid.data2);
 	inguid.data3  = htobe16(inguid.data3);
@@ -176,38 +175,6 @@ void guid_print(char *inuuid)
 	printf("-");
 	printbytes_guid((char *) &inguid.data4 + 2, 6);
 	printf("}");
-}
-
-int createvhd(struct vhdfooter *in_footer) {
-	/*
-	 * things to calculate:
-	 * 	timestamp,  original size, current size, disk geo, checksum, uuid
-	 * things to invent:
-	 * 	cookie, capp, creator ver
-	 * given:
-	 * 	features, format, hostos, offset, disk type, saved state
-	 *
-	 *
-	 * need to implement: 	customizable timestamp?
-	 * 			size input (eventual detection)
-	 * 			functions for size -> geo
-	 * 			generating uuid
-	 * 			hooking in extant checksum fn.
-	 */
-
-	uuid_t new_uuid;
-	struct guid *new_guid = (struct guid *) &new_uuid;
-	struct guid *footer_guid = (struct guid *) &in_footer->uuid;
-
-	uuid_generate_time_safe(new_uuid);
-	/* microsoft stores data1,data2,data3 in native endianess, rather than be as per uuids */
-	new_guid->data1 = be32toh(new_guid->data1);
-	new_guid->data2 = be16toh(new_guid->data2);
-	new_guid->data3 = be16toh(new_guid->data3);
-	*footer_guid = *new_guid;
-	guid_print(in_footer->uuid);
-
-	return 0;
 }
 
 void listfields(struct vhdfooter *in_footer)
@@ -231,8 +198,8 @@ void listfields(struct vhdfooter *in_footer)
 	printf("Creator App:\t\t\"%s\"\n",fixed_cApp);
 	printf("Creator Version:\t%" PRIu32 "\n",be32toh(in_footer->cVer));
 	printf("Creator OS:\t\t%" PRIu32 "\n",be32toh(in_footer->cOS));
-	printf("Original Size [b]:\t%" PRIu32 "\n", be64toh(in_footer->originalsize));
-	printf("Current Size [b]:\t%" PRIu32 "\n", be64toh(in_footer->currentsize));
+	printf("Original Size [b]:\t%" PRIu64 "\n", be64toh(in_footer->originalsize));
+	printf("Current Size [b]:\t%" PRIu64 "\n", be64toh(in_footer->currentsize));
 	printf("C/H/S:\t\t\t%" PRIu32 "/%" PRIu32 "/%" PRIu32 "\n", be16toh(in_footer->diskgeo.cylinders),
 				in_footer->diskgeo.heads,in_footer->diskgeo.sectors);
 	printf("Disktype:\t\t%");
@@ -260,11 +227,9 @@ void listfields(struct vhdfooter *in_footer)
 	}
 	printf("Checksum:\t\t%" PRIu32 "\n", be32toh(in_footer->checksum));
 	printf("Computed Checksum:\t%" PRIu32  "\n",checksum);
-	//uuid
 	printf("GUID:\t\t\t");
-	guid_print(in_footer->uuid);
+	guid_print(&in_footer->uuid);
 	printf("\n");
-	//savedstate
 	printf("Saved state:\t\t");
 	if ( in_footer->savedstate )
 		printf("Yes\n");
@@ -272,20 +237,71 @@ void listfields(struct vhdfooter *in_footer)
 		printf("No\n");
 }
 
+/* note: microsoft stores data1,data2,data3 in native endianess,
+ * rather than Big Endian as with uuids */
+int guid_gen(uuid_t *out_guid) {
+	uuid_t new_uuid;
+	struct guid *new_guid = (struct guid *) &new_uuid;
+	struct guid *footer_guid = (struct guid *) out_guid;
+
+	uuid_generate_time_safe(new_uuid);
+	new_guid->data1 = be32toh(new_guid->data1);
+	new_guid->data2 = be16toh(new_guid->data2);
+	new_guid->data3 = be16toh(new_guid->data3);
+	*footer_guid = *new_guid;
+}
+
+int createfooter(struct vhdfooter *in_footer, char *inpath) {
+	/*
+	 * need to implement: 	customizable timestamp?
+	 * 			functions for size -> geo
+	 */
+
+	FILE *infile;
+	long filesize = 0;
+	int i = 0;
+	unsigned char ncookie[9] = "vhdtool!";
+	unsigned char ncApp[5] = "wppt";
+
+	infile = fopen(inpath,"rb");
+	if (infile==NULL) {
+		printf("bad file!");
+	}
+	else {
+		fseek(infile,0,SEEK_END);
+		filesize = ftell(infile);
+		fclose(infile);
+
+		memcpy(&in_footer->cookie,ncookie,8);
+		in_footer->features = htobe32(2);
+		in_footer->fileformat = htobe32(65536u);
+		in_footer->dataoffset = htobe64(18446744073709551615u);
+		in_footer->timestamp = htobe32(current_timestamp());
+		memcpy(&in_footer->cApp,ncApp,4);
+		in_footer->cVer = htobe32(393217u);
+		in_footer->cOS = htobe32(1466511979u);
+		in_footer->originalsize = htobe64(filesize);
+		in_footer->currentsize = in_footer->originalsize;
+		in_footer->diskgeo.cylinders=0;
+		in_footer->diskgeo.heads=0;
+		in_footer->diskgeo.sectors=0;
+		in_footer->disktype = 0;
+		guid_gen(&in_footer->uuid);
+		in_footer->savedstate = 0;
+		for(i=0;i<427;i++) {
+			in_footer->reserved[i] = 0;
+		}
+		
+	}
+
+	return 0;
+}
+
 int outputfooter(struct vhdfooter *in_footer, char *outpath)
 {
 	FILE *outfile;
-	/* the timestamp needs to be stored as big-endian, so switch before writing.
-	 * test writing a new header with changed timestamp */
-
-	/* output testing:
-	in_footer.timestamp = htobe32(ctimestamp);
 	
-	myfile = fopen("./output-test","wb");
-	fwrite(&in_footer,FOOTER_SIZE,1,myfile);
-	fclose(myfile); */
-
-	outfile = fopen(outpath,"wb");
+	outfile = fopen(outpath,"ab");
 	fwrite(in_footer,FOOTER_SIZE,1,outfile);
 	fclose(outfile);
 	
@@ -294,7 +310,7 @@ int outputfooter(struct vhdfooter *in_footer, char *outpath)
 
 int main(int argc, char *argv[])
 {
-	FILE *myfile;
+	FILE *infile;
 	struct vhdfooter footer;
 	int arg, hflag = 0, lflag = 0, cflag = 0, oflag = 0;
 	char *ovalue = NULL;
@@ -310,63 +326,61 @@ int main(int argc, char *argv[])
 			lflag = 1;
 			break;
 		case 'c':
-			createvhd(&footer);
 			cflag = 1;
 			break;
 		case 'o':
 			oflag = 1;
 			ovalue = optarg;
-		/*	printf("o flag!\n");
-			printf("%s\n",cvalue);
-		 	footer.diskgeo.cylinders = 0;
-			footer.diskgeo.heads= 0;
-			footer.diskgeo.sectors= 0; 
-			footer.cVer = 50333184;
-			outputfooter(&footer, cvalue); */
 		}
 	}
 
-	if (argc) {
-		if (hflag + lflag + oflag + cflag == 0)
-			lflag = 1;
+	if (argc = 1)
+		lflag = 1;
 
-		if (hflag || lflag) {
-			myfile=fopen(argv[optind],"rb");
+	if (oflag && !cflag)
+		lflag = 1;
 
-			if (!myfile) {
-				printf("bad file! improve this message and handling...");
-			}
-			fseek(myfile,-512,SEEK_END);
-			fread(&footer,FOOTER_SIZE,1,myfile);
-			fclose(myfile);
+	if (hflag || lflag && !cflag) {
+		infile=fopen(argv[optind],"rb");
 
-			if (hflag && lflag) {
-				listfields(&footer);
-				printf("\n");
-				footer_print(&footer);
-			}
-			else if (lflag) {
-				listfields(&footer);
-			}
-			else {
-				footer_print(&footer);
-			}
+		if (!infile) {
+			printf("bad file! improve this message and handling...\n");
+			return 1;
 		}
+		fseek(infile,0,SEEK_END);
+		if (ftell(infile) < 512) {
+			printf("file too short\n");
+			return 1;
+		}
+		fseek(infile,-512,SEEK_END);
+		fread(&footer,FOOTER_SIZE,1,infile);
+		fclose(infile);
 
-		if (oflag || cflag) {
-			if (oflag && cflag) {
-				/* createfooter(&footer); */
-			}
-			else if (cflag) {
-				/* ovalue = argv[optind];
-				 * createfooter(&footer); */
-			}
-			/* fixchecksum
-			 * output to ovalue */
+		if (hflag && lflag) {
+			listfields(&footer);
+			printf("\n");
+			footer_print(&footer);
+		}
+		else if (lflag) {
+			listfields(&footer);
+		}
+		else {
+			footer_print(&footer);
 		}
 	}
-	else {
-		printf("usage to come soon...");
+
+	if (oflag || cflag) {
+		if (oflag && cflag) {
+			createfooter(&footer,argv[optind]);
+		}
+		else if (cflag) {
+			ovalue = argv[optind];
+			createfooter(&footer,argv[optind]);
+		}
+
+		if (!lflag)
+			footer.checksum = htobe32(footer_checksum(&footer));
+		outputfooter(&footer, ovalue); 
 	}
 
 	return 0;
