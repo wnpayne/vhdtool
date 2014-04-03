@@ -297,17 +297,9 @@ int main(int argc, char *argv[])
 	FILE *myfile;
 	struct vhdfooter footer;
 	int arg, hflag = 0, lflag = 0, cflag = 0, oflag = 0;
-	char *cvalue = NULL;
+	char *ovalue = NULL;
 	uint32_t checksum;
 
-	myfile=fopen(argv[argc - 1],"rb");
-
-	if (!myfile) {
-		printf("bad file! improve this message and handling...");
-	}
-	fseek(myfile,-512,SEEK_END);
-	fread(&footer,FOOTER_SIZE,1,myfile);
-	fclose(myfile);
 
 	while ((arg = getopt(argc, argv, "hlo:c")) != -1) {
 		switch (arg) {
@@ -323,32 +315,58 @@ int main(int argc, char *argv[])
 			break;
 		case 'o':
 			oflag = 1;
-			printf("o flag!\n");
-			cvalue = optarg;
+			ovalue = optarg;
+		/*	printf("o flag!\n");
 			printf("%s\n",cvalue);
-		/* 	footer.diskgeo.cylinders = 0;
+		 	footer.diskgeo.cylinders = 0;
 			footer.diskgeo.heads= 0;
-			footer.diskgeo.sectors= 0; */
+			footer.diskgeo.sectors= 0; 
 			footer.cVer = 50333184;
-			outputfooter(&footer, cvalue);
-			break;
-		default:
-			printf("no options!");
+			outputfooter(&footer, cvalue); */
 		}
 	}
 
-	if (hflag || lflag) {
-		if (hflag && lflag) {
-			listfields(&footer);
-			printf("\n");
-			footer_print(&footer);
-		}
-		else {
-			if (lflag)
+	if (argc) {
+		if (hflag + lflag + oflag + cflag == 0)
+			lflag = 1;
+
+		if (hflag || lflag) {
+			myfile=fopen(argv[optind],"rb");
+
+			if (!myfile) {
+				printf("bad file! improve this message and handling...");
+			}
+			fseek(myfile,-512,SEEK_END);
+			fread(&footer,FOOTER_SIZE,1,myfile);
+			fclose(myfile);
+
+			if (hflag && lflag) {
 				listfields(&footer);
-			else
+				printf("\n");
 				footer_print(&footer);
+			}
+			else if (lflag) {
+				listfields(&footer);
+			}
+			else {
+				footer_print(&footer);
+			}
 		}
+
+		if (oflag || cflag) {
+			if (oflag && cflag) {
+				/* createfooter(&footer); */
+			}
+			else if (cflag) {
+				/* ovalue = argv[optind];
+				 * createfooter(&footer); */
+			}
+			/* fixchecksum
+			 * output to ovalue */
+		}
+	}
+	else {
+		printf("usage to come soon...");
 	}
 
 	return 0;
