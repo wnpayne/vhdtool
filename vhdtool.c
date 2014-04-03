@@ -13,6 +13,8 @@
    integer containing the number of seconds since January 1st 2000 UTC. */
 #define WIN_REF_TIME 946713600
 #define FOOTER_SIZE 512
+#define WINDOWS 1466511979u
+#define OSX 1298228000u
 
 struct geo {
 	uint16_t cylinders;
@@ -37,7 +39,7 @@ struct vhdfooter {
 	uint32_t timestamp;
 	unsigned char cApp[4];
 	uint32_t cVer;
-	uint32_t cOS;
+	unsigned char cOS[4];
 	uint64_t originalsize;
 	uint64_t currentsize;
 	struct geo diskgeo;
@@ -182,10 +184,12 @@ void listfields(struct vhdfooter *in_footer)
 	uint32_t checksum = 0, ctimestamp = 0, disktype = 0;
 	char fixed_cookie[9]="";
 	char fixed_cApp[5]="";
+	char fixed_cOS[5]="";
 	time_t timestamp = (time_t) 0;
 	
     	fixString(8,in_footer->cookie,fixed_cookie);
 	fixString(4,in_footer->cApp,fixed_cApp);
+	fixString(4,in_footer->cOS,fixed_cOS);
 	checksum = footer_checksum(in_footer);
 	timestamp = read_timestamp(in_footer);
 	disktype = be32toh(in_footer->disktype);
@@ -197,7 +201,7 @@ void listfields(struct vhdfooter *in_footer)
 	printf("Created on:\t\t%s",ctime(&timestamp));
 	printf("Creator App:\t\t\"%s\"\n",fixed_cApp);
 	printf("Creator Version:\t%" PRIu32 "\n",be32toh(in_footer->cVer));
-	printf("Creator OS:\t\t%" PRIu32 "\n",be32toh(in_footer->cOS));
+	printf("Creator OS:\t\t%s\n", fixed_cOS);
 	printf("Original Size [b]:\t%" PRIu64 "\n", be64toh(in_footer->originalsize));
 	printf("Current Size [b]:\t%" PRIu64 "\n", be64toh(in_footer->currentsize));
 	printf("C/H/S:\t\t\t%" PRIu32 "/%" PRIu32 "/%" PRIu32 "\n", be16toh(in_footer->diskgeo.cylinders),
@@ -224,6 +228,9 @@ void listfields(struct vhdfooter *in_footer)
 		break;
 	case 6:
 		printf("Deprecated\n");
+		break;
+	default:
+		printf("Unknown\n");
 	}
 	printf("Checksum:\t\t%" PRIu32 "\n", be32toh(in_footer->checksum));
 	printf("Computed Checksum:\t%" PRIu32  "\n",checksum);
@@ -251,6 +258,49 @@ int guid_gen(uuid_t *out_guid) {
 	*footer_guid = *new_guid;
 }
 
+int creategeo(long filesize, struct geo *ingeo) {
+	uint16_t ncylinders = 0;
+	long totalsect = 0, cylinderxheads = 0;;
+	char nheads = 0, nsectors = 0;
+
+	totalsect = filesize/512;
+
+	if (totalsect > 65535*16*255) {
+		totalsect = 65535*16*255;
+	}
+
+	if (totalsect >= 65535*16*63) {
+		nsectors = 255;
+		nheads = 16;
+		cylinderxheads = totalsect/nsectors;
+	} else {
+		nsectors = 17;
+		cylinderxheads = totalsect/nsectors;
+		nheads = (cylinderxheads + 1023)/1024;
+
+		if (nheads < 4) {
+			nheads = 4;
+		}
+		
+		if (cylinderxheads >= (nheads * 1024) || nheads > 16) {
+			nsectors = 31;
+			nheads = 16;
+			cylinderxheads = totalsect/nsectors;
+		}	
+		if (cylinderxheads >= (nheads * 1024)) {
+			nsectors = 63;
+			nheads = 16;
+			cylinderxheads = totalsect/nsectors;
+		}
+	}
+	ncylinders = cylinderxheads / nheads;
+
+	ingeo->cylinders = htobe16(ncylinders);
+	ingeo->heads = nheads;
+	ingeo->sectors = nsectors;
+	return 0;
+}
+
 int createfooter(struct vhdfooter *in_footer, char *inpath) {
 	/*
 	 * need to implement: 	customizable timestamp?
@@ -262,6 +312,7 @@ int createfooter(struct vhdfooter *in_footer, char *inpath) {
 	int i = 0;
 	unsigned char ncookie[9] = "vhdtool!";
 	unsigned char ncApp[5] = "wppt";
+	unsigned char ncOS[5] = "Wi2k";
 
 	infile = fopen(inpath,"rb");
 	if (infile==NULL) {
@@ -279,13 +330,11 @@ int createfooter(struct vhdfooter *in_footer, char *inpath) {
 		in_footer->timestamp = htobe32(current_timestamp());
 		memcpy(&in_footer->cApp,ncApp,4);
 		in_footer->cVer = htobe32(393217u);
-		in_footer->cOS = htobe32(1466511979u);
+		memcpy(&in_footer->cOS,ncOS,4);
 		in_footer->originalsize = htobe64(filesize);
 		in_footer->currentsize = in_footer->originalsize;
-		in_footer->diskgeo.cylinders=0;
-		in_footer->diskgeo.heads=0;
-		in_footer->diskgeo.sectors=0;
-		in_footer->disktype = 0;
+		creategeo(filesize, &in_footer->diskgeo);
+		in_footer->disktype = htobe32(2);
 		guid_gen(&in_footer->uuid);
 		in_footer->savedstate = 0;
 		for(i=0;i<427;i++) {
