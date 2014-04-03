@@ -50,12 +50,12 @@ struct vhdfooter {
 // tested this recently and it was off by seemingly 1 hour from a windows box. Seems to work on my machine. maybe a daylight savings problem with UTC?
 /* We get the VHD time by adding the unix time for January 1st 2000 to the seconds in
    dicated by the footer. The result is then converted to a human readable string. */
-time_t read_timestamp(struct vhdfooter in_footer)
+time_t read_timestamp(struct vhdfooter *in_footer)
 {
 
 	time_t sec;
 
-	sec = (time_t) (WIN_REF_TIME + be32toh(in_footer.timestamp));
+	sec = (time_t) (WIN_REF_TIME + be32toh(in_footer->timestamp));
 	return sec;
 
 }
@@ -95,57 +95,58 @@ void printbytes(char *toprint, int len)
 }
 
 /* Pretty print the (mostly) raw bytes of the footer. */
-void footer_print(struct vhdfooter in_footer)
+void footer_print(struct vhdfooter *in_footer)
 {
 	printf("Cookie:\t\t\t");
-	printbytes(in_footer.cookie,8);
+	printbytes(in_footer->cookie,8);
 	printf("\nFeatures:\t\t");
-	printbytes((char *) &in_footer.features,4);
+	printbytes((char *) &in_footer->features,4);
 	printf("\nFormat Version:\t\t");
-	printbytes((char *) &in_footer.fileformat,4);
+	printbytes((char *) &in_footer->fileformat,4);
 	printf("\nData Offset:\t\t");
-	printbytes((char *) &in_footer.dataoffset,8);
+	printbytes((char *) &in_footer->dataoffset,8);
 	printf("\nTime Stamp:\t\t");
-	printbytes((char *) &in_footer.timestamp,4);
+	printbytes((char *) &in_footer->timestamp,4);
 	printf("\nCreator App:\t\t");
-	printbytes(in_footer.cApp,4);
+	printbytes(in_footer->cApp,4);
 	printf("\nCreator Version:\t");
-	printbytes((char *) &in_footer.cVer,4);
+	printbytes((char *) &in_footer->cVer,4);
 	printf("\nCreator OS:\t\t");
-	printbytes((char *) &in_footer.cOS,4);
+	printbytes((char *) &in_footer->cOS,4);
 	printf("\nOriginal Size:\t\t");
-	printbytes((char *) &in_footer.originalsize,8);
+	printbytes((char *) &in_footer->originalsize,8);
 	printf("\nCurrent Size:\t\t");
-	printbytes((char *) &in_footer.currentsize,8);
+	printbytes((char *) &in_footer->currentsize,8);
 	printf("\nDisk Geometry:\t\t");
-	printbytes((char *) &in_footer.diskgeo,4);
+	printbytes((char *) &in_footer->diskgeo,4);
 	printf("\nDisktype:\t\t");
-	printbytes((char *) &in_footer.disktype,4);
+	printbytes((char *) &in_footer->disktype,4);
 	printf("\nChecksum:\t\t");
-	printbytes((char *) &in_footer.checksum,4);
+	printbytes((char *) &in_footer->checksum,4);
 	printf("\nGUID:\t\t\t");
-	printbytes((char *) &in_footer.uuid,16);
+	printbytes((char *) &in_footer->uuid,16);
 	printf("\nSaved State:\t\t");
-	printbytes((char *) &in_footer.savedstate,1);
+	printbytes((char *) &in_footer->savedstate,1);
 	printf("\n");
     
 	//printf("structSize:\t%lu\n",sizeof(struct vhdfooter));
 }
 
-uint32_t footer_checksum(struct vhdfooter in_footer)
+uint32_t footer_checksum(struct vhdfooter *in_footer)
 {
 	int i = 0;
-	uint32_t checksum_neg = 0;
+	uint32_t checksum_neg = 0, oldchecksum = 0;
 	unsigned char* char_ptr = 0;
 
-	in_footer.checksum = 0;
-	char_ptr = (unsigned char *) &in_footer;
+	oldchecksum = in_footer->checksum;
+	in_footer->checksum = 0;
+	char_ptr = (unsigned char *) in_footer;
 
 	for(i=0;i < FOOTER_SIZE;i++) {
 		checksum_neg += (*char_ptr);
 		char_ptr = char_ptr + 1;
 	}
-	
+	in_footer->checksum = oldchecksum;
 	return ~checksum_neg;	
 }
 
@@ -157,27 +158,27 @@ void printbytes_guid(char *toprint, int len)
 	}
 }
 
-void guid_print(struct vhdfooter in_footer)
+void guid_print(char *inuuid)
 {
-	struct guid *inguid = (struct guid *) &in_footer.uuid;
-	inguid->data1  = htobe32(inguid->data1);
-	inguid->data2 = htobe16(inguid->data2);
-	inguid->data3  = htobe16(inguid->data3);
+	struct guid inguid = *((struct guid *) inuuid);
+	inguid.data1  = htobe32(inguid.data1);
+	inguid.data2 = htobe16(inguid.data2);
+	inguid.data3  = htobe16(inguid.data3);
 
 	printf("{");
-	printbytes_guid((char *) &inguid->data1, 4);
+	printbytes_guid((char *) &inguid.data1, 4);
 	printf("-");
-	printbytes_guid((char *) &inguid->data2, 2);
+	printbytes_guid((char *) &inguid.data2, 2);
 	printf("-");
-	printbytes_guid((char *) &inguid->data3, 2);
+	printbytes_guid((char *) &inguid.data3, 2);
 	printf("-");
-	printbytes_guid((char *) &inguid->data4, 2);
+	printbytes_guid((char *) &inguid.data4, 2);
 	printf("-");
-	printbytes_guid((char *) &inguid->data4 + 2, 6);
+	printbytes_guid((char *) &inguid.data4 + 2, 6);
 	printf("}");
 }
 
-int createvhd(struct vhdfooter in_footer) {
+int createvhd(struct vhdfooter *in_footer) {
 	/*
 	 * things to calculate:
 	 * 	timestamp,  original size, current size, disk geo, checksum, uuid
@@ -196,7 +197,7 @@ int createvhd(struct vhdfooter in_footer) {
 
 	uuid_t new_uuid;
 	struct guid *new_guid = (struct guid *) &new_uuid;
-	struct guid *footer_guid = (struct guid *) &in_footer.uuid;
+	struct guid *footer_guid = (struct guid *) &in_footer->uuid;
 
 	uuid_generate_time_safe(new_uuid);
 	/* microsoft stores data1,data2,data3 in native endianess, rather than be as per uuids */
@@ -204,37 +205,36 @@ int createvhd(struct vhdfooter in_footer) {
 	new_guid->data2 = be16toh(new_guid->data2);
 	new_guid->data3 = be16toh(new_guid->data3);
 	*footer_guid = *new_guid;
-	guid_print(in_footer);
-
+	guid_print(in_footer->uuid);
 
 	return 0;
 }
 
-void listfields(struct vhdfooter in_footer)
+void listfields(struct vhdfooter *in_footer)
 {
 	uint32_t checksum = 0, ctimestamp = 0, disktype = 0;
 	char fixed_cookie[9]="";
 	char fixed_cApp[5]="";
 	time_t timestamp = (time_t) 0;
 	
-    	fixString(8,in_footer.cookie,fixed_cookie);
-	fixString(4,in_footer.cApp,fixed_cApp);
+    	fixString(8,in_footer->cookie,fixed_cookie);
+	fixString(4,in_footer->cApp,fixed_cApp);
 	checksum = footer_checksum(in_footer);
 	timestamp = read_timestamp(in_footer);
-	disktype = be32toh(in_footer.disktype);
+	disktype = be32toh(in_footer->disktype);
 
 	printf("Cookie:\t\t\t\"%s\"\n",fixed_cookie);
-	printf("Features:\t\t%" PRIu32 "\n",be32toh(in_footer.features));
-	printf("Format Version:\t\t%" PRIu32 "\n",be32toh(in_footer.fileformat));
-	printf("Data Offset:\t\t%" PRIu64 "\n",be64toh(in_footer.dataoffset));
+	printf("Features:\t\t%" PRIu32 "\n",be32toh(in_footer->features));
+	printf("Format Version:\t\t%" PRIu32 "\n",be32toh(in_footer->fileformat));
+	printf("Data Offset:\t\t%" PRIu64 "\n",be64toh(in_footer->dataoffset));
 	printf("Created on:\t\t%s",ctime(&timestamp));
 	printf("Creator App:\t\t\"%s\"\n",fixed_cApp);
-	printf("Creator Version:\t%" PRIu32 "\n",be32toh(in_footer.cVer));
-	printf("Creator OS:\t\t%" PRIu32 "\n",be32toh(in_footer.cOS));
-	printf("Original Size [b]:\t%" PRIu32 "\n", be64toh(in_footer.originalsize));
-	printf("Current Size [b]:\t%" PRIu32 "\n", be64toh(in_footer.currentsize));
-	printf("C/H/S:\t\t\t%" PRIu32 "/%" PRIu32 "/%" PRIu32 "\n", be16toh(in_footer.diskgeo.cylinders),
-				in_footer.diskgeo.heads,in_footer.diskgeo.sectors);
+	printf("Creator Version:\t%" PRIu32 "\n",be32toh(in_footer->cVer));
+	printf("Creator OS:\t\t%" PRIu32 "\n",be32toh(in_footer->cOS));
+	printf("Original Size [b]:\t%" PRIu32 "\n", be64toh(in_footer->originalsize));
+	printf("Current Size [b]:\t%" PRIu32 "\n", be64toh(in_footer->currentsize));
+	printf("C/H/S:\t\t\t%" PRIu32 "/%" PRIu32 "/%" PRIu32 "\n", be16toh(in_footer->diskgeo.cylinders),
+				in_footer->diskgeo.heads,in_footer->diskgeo.sectors);
 	printf("Disktype:\t\t%");
 	switch (disktype) {
 	case 0:
@@ -258,21 +258,21 @@ void listfields(struct vhdfooter in_footer)
 	case 6:
 		printf("Deprecated\n");
 	}
-	printf("Checksum:\t\t%" PRIu32 "\n", be32toh(in_footer.checksum));
+	printf("Checksum:\t\t%" PRIu32 "\n", be32toh(in_footer->checksum));
 	printf("Computed Checksum:\t%" PRIu32  "\n",checksum);
 	//uuid
 	printf("GUID:\t\t\t");
-	guid_print(in_footer);
+	guid_print(in_footer->uuid);
 	printf("\n");
 	//savedstate
 	printf("Saved state:\t\t");
-	if ( in_footer.savedstate )
+	if ( in_footer->savedstate )
 		printf("Yes\n");
 	else
 		printf("No\n");
 }
 
-int outputfooter(struct vhdfooter in_footer, char *outpath)
+int outputfooter(struct vhdfooter *in_footer, char *outpath)
 {
 	FILE *outfile;
 	/* the timestamp needs to be stored as big-endian, so switch before writing.
@@ -286,7 +286,7 @@ int outputfooter(struct vhdfooter in_footer, char *outpath)
 	fclose(myfile); */
 
 	outfile = fopen(outpath,"wb");
-	fwrite(&in_footer,FOOTER_SIZE,1,outfile);
+	fwrite(in_footer,FOOTER_SIZE,1,outfile);
 	fclose(outfile);
 	
 	return 0;
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
 {
 	FILE *myfile;
 	struct vhdfooter footer;
-	int arg, hflag = 0, lflag = 0, cflag = 0;
+	int arg, hflag = 0, lflag = 0, cflag = 0, oflag = 0;
 	char *cvalue = NULL;
 	uint32_t checksum;
 
@@ -312,15 +312,17 @@ int main(int argc, char *argv[])
 	while ((arg = getopt(argc, argv, "hlo:c")) != -1) {
 		switch (arg) {
 		case 'h':
-			footer_print(footer);
+			hflag = 1;
 			break;
 		case 'l':
-			listfields(footer);
+			lflag = 1;
 			break;
 		case 'c':
-			createvhd(footer);
+			createvhd(&footer);
+			cflag = 1;
 			break;
 		case 'o':
+			oflag = 1;
 			printf("o flag!\n");
 			cvalue = optarg;
 			printf("%s\n",cvalue);
@@ -328,11 +330,26 @@ int main(int argc, char *argv[])
 			footer.diskgeo.heads= 0;
 			footer.diskgeo.sectors= 0; */
 			footer.cVer = 50333184;
-			outputfooter(footer, cvalue);
+			outputfooter(&footer, cvalue);
 			break;
 		default:
 			printf("no options!");
 		}
 	}
-    return 0;
+
+	if (hflag || lflag) {
+		if (hflag && lflag) {
+			listfields(&footer);
+			printf("\n");
+			footer_print(&footer);
+		}
+		else {
+			if (lflag)
+				listfields(&footer);
+			else
+				footer_print(&footer);
+		}
+	}
+
+	return 0;
 }
