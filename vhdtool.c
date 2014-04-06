@@ -310,8 +310,8 @@ int createfooter(struct vhdfooter *in_footer, char *inpath) {
 	FILE *infile;
 	long filesize = 0;
 	int i = 0;
-	unsigned char ncookie[9] = "vhdtool!";
-	unsigned char ncApp[5] = "wppt";
+	unsigned char ncookie[9] = "conectix";
+	unsigned char ncApp[5] = "win ";
 	unsigned char ncOS[5] = "Wi2k";
 
 	infile = fopen(inpath,"rb");
@@ -335,6 +335,7 @@ int createfooter(struct vhdfooter *in_footer, char *inpath) {
 		in_footer->currentsize = in_footer->originalsize;
 		creategeo(filesize, &in_footer->diskgeo);
 		in_footer->disktype = htobe32(2);
+		in_footer->checksum = 0;
 		guid_gen(&in_footer->uuid);
 		in_footer->savedstate = 0;
 		for(i=0;i<427;i++) {
@@ -383,7 +384,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (argc = 1)
+	if (argc == 2)
 		lflag = 1;
 
 	if (oflag && !cflag)
